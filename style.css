@@ -409,24 +409,30 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .status-safe {
     color: var(--color-success) !important;
-    text-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
 }
 
 .status-warning {
     color: var(--color-warning) !important;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
 }
 
 .status-danger {
     color: var(--color-danger) !important;
-    text-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 
-/* Schematic + Alarm Grid Panel layout */
+/* Schematic + Alarm/Summary Column layout */
 .schematic-layout-grid {
     display: grid;
-    grid-template-columns: 1fr 250px;
+    grid-template-columns: 1fr 260px;
     gap: 20px;
+}
+
+.alarm-summary-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 /* Diagram Panel */
@@ -552,40 +558,56 @@ input[type="range"]::-webkit-slider-thumb:hover {
     color: #52525b;
 }
 
-/* Active alarm state styles */
+/* High visibility active alarm state styles */
 .alarm-tile.active {
-    background-color: rgba(239, 68, 68, 0.03);
-    border-color: rgba(239, 68, 68, 0.3);
+    background-color: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    animation: alarmTileFlashRed 0.8s infinite alternate;
 }
 
 .alarm-tile.active .alarm-light {
     background-color: var(--color-danger);
-    box-shadow: 0 0 10px var(--color-danger);
-    animation: flashAlarm 0.8s infinite alternate;
+    box-shadow: 0 0 15px 4px var(--color-danger);
 }
 
 .alarm-tile.active .alarm-name {
-    color: var(--color-danger);
+    color: #fafafa;
+    font-weight: 800;
 }
 
-@keyframes flashAlarm {
-    0% { opacity: 0.4; }
-    100% { opacity: 1; }
+.alarm-tile.active .alarm-desc {
+    color: #fca5a5;
 }
 
-/* Active Alert State (Warning) */
+@keyframes alarmTileFlashRed {
+    0% { background-color: rgba(239, 68, 68, 0.05); }
+    100% { background-color: rgba(239, 68, 68, 0.20); }
+}
+
+/* Active Warning State (Constraint Limit Active) */
 .alarm-tile.warning {
-    background-color: rgba(245, 158, 11, 0.03);
-    border-color: rgba(245, 158, 11, 0.3);
+    background-color: rgba(245, 158, 11, 0.12);
+    border-color: #f59e0b;
+    animation: alarmTileFlashOrange 0.8s infinite alternate;
 }
 
 .alarm-tile.warning .alarm-light {
     background-color: var(--color-warning);
-    box-shadow: 0 0 10px var(--color-warning);
+    box-shadow: 0 0 12px 3px var(--color-warning);
 }
 
 .alarm-tile.warning .alarm-name {
-    color: var(--color-warning);
+    color: #fafafa;
+    font-weight: 800;
+}
+
+.alarm-tile.warning .alarm-desc {
+    color: #fde68a;
+}
+
+@keyframes alarmTileFlashOrange {
+    0% { background-color: rgba(245, 158, 11, 0.04); }
+    100% { background-color: rgba(245, 158, 11, 0.16); }
 }
 
 /* State tile (bottom of alarm panel) */
@@ -598,8 +620,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .status-indicator {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background-color: var(--color-success);
     box-shadow: 0 0 8px var(--color-success);
@@ -607,25 +629,60 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .status-indicator.warning {
     background-color: var(--color-warning);
-    box-shadow: 0 0 8px var(--color-warning);
+    box-shadow: 0 0 10px 2px var(--color-warning);
+    animation: pulseOrangeAlert 1.5s infinite;
 }
 
 .status-indicator.danger {
     background-color: var(--color-danger);
-    box-shadow: 0 0 8px var(--color-danger);
+    box-shadow: 0 0 12px 3px var(--color-danger);
     animation: pulseRedAlert 1.5s infinite;
 }
 
 @keyframes pulseRedAlert {
-    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
     100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulseOrangeAlert {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8); }
+    70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
 
 .status-label {
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.5px;
+}
+
+/* Simulation Summary Panel Styling */
+.summary-panel {
+    padding: 15px;
+}
+
+.summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 11px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    padding-bottom: 5px;
+}
+
+.summary-row span {
+    color: var(--text-secondary);
+}
+
+.summary-row strong {
+    color: var(--text-primary);
 }
 
 /* Charts Grid */

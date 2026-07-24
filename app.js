@@ -215,6 +215,9 @@ class MPCController {
                 expected_bhp: best_trajectory_info.expected_bhp,
                 num_safe: num_safe,
                 num_rejected: 101 - num_safe,
+                whp_viol_count: num_whp_viol,
+                flp_viol_count: num_flp_viol,
+                bhp_viol_count: num_bhp_viol,
                 rejection_example: rejection_example,
                 status: (101 - num_safe) === 0 ? 'SAFE' : ((101 - num_safe) < 101 ? 'LIMIT ACTIVE' : 'UNSAFE_SYSTEM_LIMIT')
             }
@@ -237,6 +240,7 @@ let max_scenario_steps = 60;
 let cumulative_prod = 0.0;
 let errors_sum = 0.0;
 let violations_count = 0;
+let max_ramp_rate = 0.0;
 
 // Data History arrays
 let t_history = [];
@@ -295,6 +299,7 @@ const kpiChoke = document.getElementById("kpi-choke");
 const kpiProd = document.getElementById("kpi-prod");
 const kpiError = document.getElementById("kpi-error");
 const kpiViolations = document.getElementById("kpi-violations");
+const kpiStatus = document.getElementById("kpi-status");
 
 // Alarm elements
 const alarmWhpTile = document.getElementById("alarm-whp-tile");
@@ -303,6 +308,14 @@ const alarmBhpTile = document.getElementById("alarm-bhp-tile");
 const alarmRampTile = document.getElementById("alarm-ramp-tile");
 const alarmStatusTile = document.getElementById("alarm-status-tile");
 const operatingStateLabel = document.getElementById("operating-state-label");
+
+// Simulation summary elements
+const sumScenario = document.getElementById("sum-scenario");
+const sumRate = document.getElementById("sum-rate");
+const sumChoke = document.getElementById("sum-choke");
+const sumViolations = document.getElementById("sum-violations");
+const sumRamp = document.getElementById("sum-ramp");
+const sumStatus = document.getElementById("sum-status");
 
 // SVG Elements
 const flowLine = document.getElementById("flow-line");
@@ -457,8 +470,22 @@ function initCharts() {
     chartBHP = new Chart(document.getElementById('chart-bhp'), configBHP);
 }
 
-// Update charts dataset values and re-render
+// Update charts dataset values and re-render robustly
 function updateCharts() {
+    chartRate.data.labels = t_history;
+    chartRate.data.datasets[0].data = target_history;
+    chartRate.data.datasets[1].data = Q_history;
+    
+    chartChoke.data.labels = t_history;
+    chartChoke.data.datasets[0].data = choke_history;
+    
+    chartPressures.data.labels = t_history;
+    chartPressures.data.datasets[0].data = whp_history;
+    chartPressures.data.datasets[1].data = flp_history;
+    
+    chartBHP.data.labels = t_history;
+    chartBHP.data.datasets[0].data = bhp_history;
+
     chartRate.update();
     chartChoke.update();
     chartPressures.update();
@@ -483,23 +510,15 @@ function resetSimulation() {
     cumulative_prod = 0.0;
     errors_sum = 0.0;
     violations_count = 0;
+    max_ramp_rate = 0.0;
     
-    t_history.length = 0;
-    target_history.length = 0;
-    Q_history.length = 0;
-    choke_history.length = 0;
-    whp_history.length = 0;
-    flp_history.length = 0;
-    bhp_history.length = 0;
-    
-    // Add initial state to history
-    t_history.push(0);
-    target_history.push(getSetpoint(0));
-    Q_history.push(simulator.Q);
-    choke_history.push(simulator.choke);
-    whp_history.push(simulator.WHP);
-    flp_history.push(simulator.FLP);
-    bhp_history.push(simulator.BHP);
+    t_history = [0];
+    target_history = [getSetpoint(0)];
+    Q_history = [simulator.Q];
+    choke_history = [simulator.choke];
+    whp_history = [simulator.WHP];
+    flp_history = [simulator.FLP];
+    bhp_history = [simulator.BHP];
     
     // Update KPI panels
     kpiTarget.textContent = getSetpoint(0).toFixed(1);
@@ -508,6 +527,8 @@ function resetSimulation() {
     kpiProd.textContent = "0.0";
     kpiError.textContent = "0.0";
     kpiViolations.textContent = "0";
+    kpiStatus.textContent = "SAFE";
+    kpiStatus.className = "kpi-val status-safe";
     
     // Reset alarm panels
     alarmWhpTile.className = "alarm-tile";
@@ -517,13 +538,23 @@ function resetSimulation() {
     alarmStatusTile.className = "alarm-tile status-tile";
     operatingStateLabel.textContent = "NORMAL STATE";
     
+    // Reset simulation summary card
+    let modeText = modeSelect.value === "manual_override" ? "Manual Override" : getScenarioName();
+    sumScenario.textContent = modeText;
+    sumRate.textContent = "-";
+    sumChoke.textContent = "-";
+    sumViolations.textContent = "-";
+    sumRamp.textContent = "-";
+    sumStatus.textContent = "INITIALIZED";
+    sumStatus.className = "status-safe";
+    
     // Update SVG values
     valvePct.textContent = "30.0%";
     labelWHP.textContent = `WHP: ${simulator.WHP.toFixed(1)} psi`;
     labelFLP.textContent = `FLP: ${simulator.FLP.toFixed(1)} psi`;
     labelBHP.textContent = `BHP: ${simulator.BHP.toFixed(1)} psi`;
     
-    // Synch sliders
+    // Sync sliders
     if (modeSelect.value === "manual_override") {
         manualChokeSlider.value = 30.0;
         manualChokeValue.textContent = "30.0%";
@@ -538,6 +569,14 @@ function resetSimulation() {
     logToConsole(`Initial states: Flow Q=${simulator.Q.toFixed(1)} bbl/hr, BHP=${simulator.BHP.toFixed(1)} psi, WHP=${simulator.WHP.toFixed(1)} psi.`, "system");
     
     updateCharts();
+}
+
+function getScenarioName() {
+    const sc = scenarioSelect.value;
+    if (sc === "scenario_a") return "Scenario A (Startup)";
+    if (sc === "scenario_b") return "Scenario B (Tracking)";
+    if (sc === "scenario_c") return "Scenario C (Infeasible)";
+    return "Manual Setpoint";
 }
 
 // Helper to determine target setpoint based on selected scenario and hour
@@ -607,10 +646,13 @@ function executeStep() {
         const traj = controller.predictTrajectory(nextChoke, Q, WHP, FLP, BHP);
         let isSafe = true;
         let rejectReason = "None";
+        let whpViolCount = 0;
+        let flpViolCount = 0;
+        let bhpViolCount = 0;
         for (let j = 0; j < controller.Hp; j++) {
-            if (traj.BHP[j] < controller.bhp_min) { isSafe = false; rejectReason = `Predicted BHP drop to ${traj.BHP[j].toFixed(0)} psi (Limit >= ${controller.bhp_min})`; }
-            if (traj.WHP[j] < controller.whp_min) { isSafe = false; rejectReason = `Predicted WHP drop to ${traj.WHP[j].toFixed(0)} psi (Limit >= ${controller.whp_min})`; }
-            if (traj.FLP[j] < controller.flp_min) { isSafe = false; rejectReason = `Predicted FLP drop to ${traj.FLP[j].toFixed(0)} psi (Limit >= ${controller.flp_min})`; }
+            if (traj.BHP[j] < controller.bhp_min) { isSafe = false; bhpViolCount++; rejectReason = `Predicted BHP drop to ${traj.BHP[j].toFixed(0)} psi (Limit >= ${controller.bhp_min})`; }
+            if (traj.WHP[j] < controller.whp_min) { isSafe = false; whpViolCount++; rejectReason = `Predicted WHP drop to ${traj.WHP[j].toFixed(0)} psi (Limit >= ${controller.whp_min})`; }
+            if (traj.FLP[j] < controller.flp_min) { isSafe = false; flpViolCount++; rejectReason = `Predicted FLP drop to ${traj.FLP[j].toFixed(0)} psi (Limit >= ${controller.flp_min})`; }
         }
         
         diag = {
@@ -620,6 +662,9 @@ function executeStep() {
             expected_bhp: traj.BHP[controller.Hp - 1],
             num_safe: isSafe ? 101 : 0,
             num_rejected: isSafe ? 0 : 101,
+            whp_viol_count: whpViolCount,
+            flp_viol_count: flpViolCount,
+            bhp_viol_count: bhpViolCount,
             rejection_example: rejectReason,
             status: isSafe ? 'SAFE' : 'UNSAFE_SYSTEM_LIMIT',
             ramp_violation: rampViol
@@ -632,6 +677,10 @@ function executeStep() {
         diag.ramp_violation = false;
     }
     
+    // Track maximum choke ramp rate
+    const choke_diff = Math.abs(nextChoke - choke);
+    max_ramp_rate = Math.max(max_ramp_rate, choke_diff);
+    
     // Step Simulator
     const addNoise = paramNoiseCheckbox.checked;
     const newStates = simulator.step(nextChoke, addNoise);
@@ -641,11 +690,11 @@ function executeStep() {
     errors_sum += Math.abs(newStates.Q - target);
     const mae = errors_sum / current_hour;
     
-    // Check for active pressure violations on the true simulator state
+    // Check for active pressure violations on the true simulator state (Alarms)
     const whpViol = newStates.WHP < controller.whp_min;
     const flpViol = newStates.FLP < controller.flp_min;
     const bhpViol = newStates.BHP < controller.bhp_min;
-    const rampViol = diag.ramp_violation;
+    const rampViol = diag.ramp_violation || choke_diff > 5.05;
     const anyViol = whpViol || flpViol || bhpViol;
     if (anyViol) {
         violations_count++;
@@ -668,28 +717,82 @@ function executeStep() {
     kpiError.textContent = isManualOverride ? "-" : mae.toFixed(1);
     kpiViolations.textContent = violations_count;
     
-    // Toggle active classes on industrial alarm annunciator panel
-    alarmWhpTile.className = "alarm-tile" + (whpViol ? " active" : "");
-    alarmFlpTile.className = "alarm-tile" + (flpViol ? " active" : "");
-    alarmBhpTile.className = "alarm-tile" + (bhpViol ? " active" : "");
-    alarmRampTile.className = "alarm-tile" + (rampViol ? " active warning" : "");
+    // Determine alarm tile classes using 3-state logic:
+    // Red (active): pressure violates limit.
+    // Orange (warning): limit is active in controller predictions.
+    // Dim (normal): limit is safe.
     
-    // Update alarm status tile and class
+    // WHP tile
+    if (whpViol) {
+        alarmWhpTile.className = "alarm-tile active"; // Red
+    } else if (diag.whp_viol_count > 0 && diag.status === "LIMIT ACTIVE") {
+        alarmWhpTile.className = "alarm-tile warning"; // Orange
+    } else {
+        alarmWhpTile.className = "alarm-tile"; // Dim
+    }
+    
+    // FLP tile
+    if (flpViol) {
+        alarmFlpTile.className = "alarm-tile active"; // Red
+    } else if (diag.flp_viol_count > 0 && diag.status === "LIMIT ACTIVE") {
+        alarmFlpTile.className = "alarm-tile warning"; // Orange
+    } else {
+        alarmFlpTile.className = "alarm-tile"; // Dim
+    }
+    
+    // BHP tile
+    if (bhpViol) {
+        alarmBhpTile.className = "alarm-tile active"; // Red
+    } else if (diag.bhp_viol_count > 0 && diag.status === "LIMIT ACTIVE") {
+        alarmBhpTile.className = "alarm-tile warning"; // Orange
+    } else {
+        alarmBhpTile.className = "alarm-tile"; // Dim
+    }
+    
+    // Ramp Rate tile
+    if (rampViol) {
+        alarmRampTile.className = "alarm-tile active"; // Red
+    } else if (choke_diff > 4.90) {
+        alarmRampTile.className = "alarm-tile warning"; // Orange
+    } else {
+        alarmRampTile.className = "alarm-tile"; // Dim
+    }
+    
+    // Update alarm status tile class
     if (anyViol) {
         alarmStatusTile.className = "alarm-tile status-tile active";
         operatingStateLabel.textContent = "ALARM ACTIVE";
-        kpiStatus.textContent = "ALARM";
+        kpiStatus.textContent = "VIOLATION";
         kpiStatus.className = "kpi-val status-danger";
     } else if (diag.status === "LIMIT ACTIVE") {
         alarmStatusTile.className = "alarm-tile status-tile warning";
         operatingStateLabel.textContent = "LIMIT ACTIVE";
-        kpiStatus.textContent = "LIMIT ACTIVE";
+        kpiStatus.textContent = "CONSTRAINT ACTIVE";
         kpiStatus.className = "kpi-val status-warning";
     } else {
         alarmStatusTile.className = "alarm-tile status-tile";
         operatingStateLabel.textContent = "NORMAL STATE";
-        kpiStatus.textContent = "SAFE";
+        kpiStatus.textContent = "NORMAL";
         kpiStatus.className = "kpi-val status-safe";
+    }
+    
+    // Live update Simulation Summary card
+    let modeText = isManualOverride ? "Manual Override" : getScenarioName();
+    sumScenario.textContent = modeText;
+    sumRate.textContent = `${newStates.Q.toFixed(1)} bbl/hr`;
+    sumChoke.textContent = `${nextChoke.toFixed(1)}%`;
+    sumViolations.textContent = `${violations_count} hrs`;
+    sumRamp.textContent = `${max_ramp_rate.toFixed(1)}%`;
+    
+    if (anyViol) {
+        sumStatus.textContent = "VIOLATION";
+        sumStatus.className = "status-danger";
+    } else if (diag.status === "LIMIT ACTIVE") {
+        sumStatus.textContent = "LIMIT ACTIVE";
+        sumStatus.className = "status-warning";
+    } else {
+        sumStatus.textContent = "SAFE";
+        sumStatus.className = "status-safe";
     }
     
     // Update SVG layout values
@@ -699,7 +802,6 @@ function executeStep() {
     labelBHP.textContent = `BHP: ${newStates.BHP.toFixed(1)} psi`;
     
     // Toggle active valve rotating class if choke is changing
-    const choke_diff = Math.abs(nextChoke - choke);
     if (choke_diff > 0.05) {
         valveHandwheel.setAttribute("class", "valve-rotating");
     } else {
