@@ -333,6 +333,11 @@ const labelBHP = document.getElementById("label-bhp");
 
 // Initialize Charts
 function initCharts() {
+    if (chartRate) chartRate.destroy();
+    if (chartChoke) chartChoke.destroy();
+    if (chartPressures) chartPressures.destroy();
+    if (chartBHP) chartBHP.destroy();
+
     const configRate = {
         type: 'line',
         data: {
