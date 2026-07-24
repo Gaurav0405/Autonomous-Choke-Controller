@@ -1,0 +1,16 @@
+# Cache files
+__pycache__/
+*.pyc
+
+# Local system files
+.DS_Store
+Thumbs.db
+
+# Submission ZIP package (can be large)
+*.zip
+
+# Temporary folders
+temp_zip/
+
+# MS Office lock files
+~$*
