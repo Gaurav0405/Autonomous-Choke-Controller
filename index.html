@@ -35,10 +35,29 @@
         <!-- LEFT: Control Panel -->
         <section class="panel control-panel">
             <div class="panel-header">
-                <h2>🔧 Controller & Simulator Settings</h2>
+                <h2>🔧 Simulator & Mode Controls</h2>
             </div>
             
+            <!-- Control Mode Selection -->
             <div class="control-group">
+                <label for="mode-select">Control Mode</label>
+                <select id="mode-select">
+                    <option value="auto">Autonomous (MPC Controller)</option>
+                    <option value="manual_override">Manual Operator Override</option>
+                </select>
+            </div>
+
+            <!-- Manual Operator Override Slider -->
+            <div class="control-group manual-override-only" style="display: none;">
+                <div class="label-row">
+                    <label for="manual-choke-slider">Manual Choke Position</label>
+                    <span id="manual-choke-value" class="badge">30.0%</span>
+                </div>
+                <input type="range" id="manual-choke-slider" min="0" max="100" step="0.5" value="30">
+            </div>
+
+            <!-- Setpoint profile selector (Autonomous mode only) -->
+            <div class="control-group auto-only">
                 <label for="scenario-select">Select Simulation Scenario</label>
                 <select id="scenario-select">
                     <option value="scenario_a">Startup to Target (Scenario A)</option>
@@ -48,12 +67,23 @@
                 </select>
             </div>
 
+            <!-- Setpoint slider (Manual setpoint mode only) -->
             <div class="control-group manual-only" style="display: none;">
                 <div class="label-row">
                     <label for="target-slider">Target Oil Rate (bbl/hr)</label>
                     <span id="target-value" class="badge">120 bbl/hr</span>
                 </div>
                 <input type="range" id="target-slider" min="50" max="250" step="5" value="120">
+            </div>
+
+            <!-- Disturbance Injection Panel -->
+            <div class="control-panel-section">
+                <h3>⚠️ Field Disturbance Injection</h3>
+                <div class="disturbance-buttons">
+                    <button id="btn-dist-depletion" class="btn btn-secondary btn-sm">Deplete Reservoir (-100 psi BHP)</button>
+                    <button id="btn-dist-blockage" class="btn btn-secondary btn-sm">Line Blockage (+30 psi FLP)</button>
+                    <button id="btn-dist-reset" class="btn btn-danger btn-sm">Reset Field Conditions</button>
+                </div>
             </div>
 
             <!-- Accordion for Advanced Parameters -->
@@ -103,7 +133,7 @@
             </details>
 
             <div class="action-buttons">
-                <button id="btn-play" class="btn btn-primary">▶ Run Scenario</button>
+                <button id="btn-play" class="btn btn-primary">▶ Run Simulation</button>
                 <button id="btn-step" class="btn btn-secondary">⏭ Step 1 Hr</button>
                 <button id="btn-reset" class="btn btn-danger">🔄 Reset</button>
             </div>
@@ -134,152 +164,206 @@
                     <span class="kpi-unit">bbl/hr</span>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Production Choke</span>
+                    <span class="kpi-label">Choke Opening</span>
                     <span id="kpi-choke" class="kpi-val">-</span>
                     <span class="kpi-unit">%</span>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Safety Status</span>
-                    <span id="kpi-status" class="kpi-val status-safe">SAFE</span>
-                    <span class="kpi-unit" id="kpi-hour">Hour 0</span>
+                    <span class="kpi-label">Total Production</span>
+                    <span id="kpi-prod" class="kpi-val">0.0</span>
+                    <span class="kpi-unit">bbl (Cumulative)</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Tracking Error</span>
+                    <span id="kpi-error" class="kpi-val">0.0</span>
+                    <span class="kpi-unit">bbl/hr (MAE)</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Envelope Violations</span>
+                    <span id="kpi-violations" class="kpi-val">0</span>
+                    <span class="kpi-unit">hours (Unsafe state)</span>
                 </div>
             </div>
 
-            <!-- Row 2: Well Diagram -->
-            <div class="panel diagram-panel">
-                <div class="panel-header">
-                    <h2>🗺️ Process Flow Schematic</h2>
+            <!-- Row 2: Schematic & Alarm Panel -->
+            <div class="schematic-layout-grid">
+                <!-- SVG Diagram Panel -->
+                <div class="panel diagram-panel">
+                    <div class="panel-header">
+                        <h2>🗺️ Process Flow Schematic</h2>
+                    </div>
+                    <div class="schematic-container">
+                        <svg viewBox="0 0 800 380" class="schematic-svg">
+                            <!-- Definitions for Gradients -->
+                            <defs>
+                                <linearGradient id="casingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#27272a"/>
+                                    <stop offset="50%" stop-color="#52525b"/>
+                                    <stop offset="100%" stop-color="#27272a"/>
+                                </linearGradient>
+                                <linearGradient id="reservoirGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="#1c1917"/>
+                                    <stop offset="50%" stop-color="#292524"/>
+                                    <stop offset="100%" stop-color="#1c1917"/>
+                                </linearGradient>
+                            </defs>
+
+                            <!-- Subsurface: Reservoir Layers -->
+                            <rect x="20" y="280" width="760" height="90" fill="url(#reservoirGrad)" stroke="#27272a" stroke-width="1.5"/>
+                            <text x="350" y="340" fill="#71717a" font-size="12" font-weight="600" letter-spacing="1">RESERVOIR LAYER</text>
+                            <text x="70" y="330" fill="#52525b" font-size="10">Sandstone Formation</text>
+                            
+                            <!-- Ground Level Line -->
+                            <line x1="20" y1="180" x2="780" y2="180" stroke="#52525b" stroke-width="3" stroke-dasharray="10, 4"/>
+                            <text x="30" y="174" fill="#52525b" font-size="10" font-weight="600">GROUND LEVEL</text>
+                            
+                            <!-- Subsurface: Outer Casing (Surface Casing) -->
+                            <rect x="110" y="180" width="80" height="70" fill="url(#casingGrad)" stroke="#27272a" stroke-width="1.5"/>
+                            <text x="50" y="225" fill="#71717a" font-size="10" text-anchor="end">Surface Casing</text>
+                            <line x1="110" y1="220" x2="60" y2="220" stroke="#3f3f46" stroke-width="1"/>
+
+                            <!-- Subsurface: Middle Casing (Intermediate Casing) -->
+                            <rect x="122" y="180" width="56" height="130" fill="url(#casingGrad)" stroke="#27272a" stroke-width="1.5"/>
+                            <text x="50" y="265" fill="#71717a" font-size="10" text-anchor="end">Intermediate Casing</text>
+                            <line x1="122" y1="260" x2="60" y2="260" stroke="#3f3f46" stroke-width="1"/>
+
+                            <!-- Subsurface: Production Tubing -->
+                            <rect x="136" y="110" width="28" height="250" fill="#09090b" stroke="#3b82f6" stroke-width="2"/>
+                            <text x="50" y="305" fill="#3b82f6" font-size="10" text-anchor="end">Production Tubing</text>
+                            <line x1="136" y1="300" x2="60" y2="300" stroke="#3b82f6" stroke-opacity="0.5" stroke-width="1"/>
+                            
+                            <!-- Annulus Space label -->
+                            <text x="250" y="225" fill="#71717a" font-size="10">Annulus Space</text>
+                            <path d="M 200 220 L 175 220" stroke="#3f3f46" stroke-width="1" fill="none"/>
+                            
+                            <!-- Perforations and Inflow Arrows -->
+                            <path d="M 115 340 L 132 340 M 115 350 L 132 350 M 185 340 L 168 340 M 185 350 L 168 350" stroke="#ef4444" stroke-width="2"/>
+                            <text x="150" y="362" fill="#ef4444" font-size="8" font-weight="bold" text-anchor="middle">PERFORATIONS</text>
+                            
+                            <!-- Subsurface Fluid Flow Animation (Oil Bubbles) -->
+                            <g id="oil-bubbles">
+                                <circle cx="150" cy="0" r="3" fill="#3b82f6" class="bubble bubble-d1"/>
+                                <circle cx="144" cy="0" r="2.5" fill="#60a5fa" class="bubble bubble-d2"/>
+                                <circle cx="156" cy="0" r="3.5" fill="#3b82f6" class="bubble bubble-d3"/>
+                                <circle cx="148" cy="0" r="2" fill="#60a5fa" class="bubble bubble-d4"/>
+                                <circle cx="152" cy="0" r="3" fill="#3b82f6" class="bubble bubble-d5"/>
+                            </g>
+
+                            <!-- Surface: Pipelines -->
+                            <!-- Wellhead to Choke -->
+                            <path d="M 150 110 L 260 110" fill="none" stroke="#27272a" stroke-width="6"/>
+                            <!-- Choke to gathering manifold and separator -->
+                            <path d="M 300 110 L 460 110 L 460 70 L 580 70 M 580 70 L 610 70" fill="none" stroke="#27272a" stroke-width="6"/>
+                            <path d="M 150 110 L 260 110 M 300 110 L 460 110 L 460 70 L 580 70" fill="none" stroke="#3b82f6" stroke-width="3" id="flow-line" class="animated-flow"/>
+
+                            <!-- Wellhead Christmas Tree -->
+                            <!-- Vertical valves blocks -->
+                            <rect x="132" y="70" width="36" height="110" rx="3" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
+                            <circle cx="150" cy="90" r="8" fill="#27272a" stroke="#52525b" stroke-width="1.5"/>
+                            <circle cx="150" cy="140" r="8" fill="#27272a" stroke="#52525b" stroke-width="1.5"/>
+                            <text x="150" y="60" fill="#fafafa" font-size="11" font-weight="700" text-anchor="middle">WELLHEAD</text>
+                            
+                            <!-- Wellhead Pressure Gauge Pwh -->
+                            <g transform="translate(100, 70)" id="gauge-whp">
+                                <circle cx="15" cy="15" r="12" fill="#18181b" stroke="#3b82f6" stroke-width="2"/>
+                                <line x1="15" y1="15" x2="15" y2="7" stroke="#3b82f6" stroke-width="2" id="needle-whp"/>
+                                <line x1="27" y1="15" x2="32" y2="15" stroke="#3f3f46" stroke-width="1.5"/>
+                                <text x="15" y="-3" fill="#a1a1aa" font-size="9" font-weight="bold" text-anchor="middle">Pwh</text>
+                            </g>
+
+                            <!-- Choke Valve -->
+                            <g transform="translate(260, 90)" id="valve-group">
+                                <polygon points="0,0 40,40 40,0 0,40" fill="#ea580c" stroke="#f97316" stroke-width="1.5"/>
+                                <rect x="15" y="10" width="10" height="20" fill="#f97316"/>
+                                <circle cx="20" cy="5" r="8" fill="#27272a" stroke="#3f3f46" stroke-width="1.5" id="valve-handwheel"/>
+                                <text x="20" y="-12" fill="#fafafa" font-size="10" font-weight="bold" text-anchor="middle">CHOKE VALVE</text>
+                                <text x="20" y="55" fill="#f97316" font-size="10" font-weight="bold" text-anchor="middle" id="valve-pct">30%</text>
+                            </g>
+
+                            <!-- Flowline Pressure Gauge Pfl -->
+                            <g transform="translate(370, 70)" id="gauge-flp">
+                                <circle cx="15" cy="15" r="12" fill="#18181b" stroke="#3b82f6" stroke-width="2"/>
+                                <line x1="15" y1="15" x2="15" y2="7" stroke="#3b82f6" stroke-width="2" id="needle-flp"/>
+                                <line x1="15" y1="27" x2="15" y2="35" stroke="#3f3f46" stroke-width="1.5"/>
+                                <text x="15" y="-3" fill="#a1a1aa" font-size="9" font-weight="bold" text-anchor="middle">Pfl</text>
+                            </g>
+
+                            <!-- Gathering Manifold / Piping elbow -->
+                            <rect x="448" y="100" width="24" height="20" rx="2" fill="#27272a" stroke="#3f3f46"/>
+                            <text x="460" y="135" fill="#71717a" font-size="9" text-anchor="middle">Manifold</text>
+
+                            <!-- Separator Vessel -->
+                            <rect x="580" y="40" width="150" height="70" rx="15" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
+                            <line x1="580" y1="90" x2="730" y2="90" stroke="#334155" stroke-width="1.5"/>
+                            <text x="655" y="76" fill="#fafafa" font-size="11" font-weight="700" text-anchor="middle">SEPARATOR VESSEL</text>
+                            
+                            <!-- Separator liquid level representation -->
+                            <rect x="582" y="80" width="146" height="28" rx="5" fill="#3b82f6" fill-opacity="0.1"/>
+                            <text x="655" y="98" fill="#71717a" font-size="8" text-anchor="middle">Liquid Phase</text>
+
+                            <!-- Bottom Hole Pressure Pbh callout -->
+                            <g transform="translate(85, 335)" id="gauge-bhp">
+                                <text x="-5" y="13" fill="#fb7185" font-size="9" font-weight="bold" text-anchor="end">Pbh (BHP)</text>
+                                <line x1="-3" y1="10" x2="48" y2="10" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="2, 2"/>
+                                <circle cx="50" cy="10" r="3" fill="#fb7185"/>
+                            </g>
+
+                            <!-- Callouts & Dynamic Displays -->
+                            <g transform="translate(130, 20)">
+                                <rect x="-55" y="0" width="90" height="20" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1"/>
+                                <text x="-10" y="13" fill="#3b82f6" font-size="10" font-weight="bold" id="label-whp">WHP: -</text>
+                            </g>
+                            <g transform="translate(355, 20)">
+                                <rect x="0" y="0" width="90" height="20" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1"/>
+                                <text x="45" y="13" fill="#3b82f6" font-size="10" font-weight="bold" text-anchor="middle" id="label-flp">FLP: -</text>
+                            </g>
+                            <g transform="translate(230, 310)">
+                                <rect x="0" y="0" width="100" height="20" rx="4" fill="#09090b" stroke="#fb7185" stroke-width="1"/>
+                                <text x="50" y="13" fill="#fb7185" font-size="10" font-weight="bold" text-anchor="middle" id="label-bhp">BHP: -</text>
+                            </g>
+                        </svg>
+                    </div>
                 </div>
-                <div class="schematic-container">
-                    <svg viewBox="0 0 800 380" class="schematic-svg">
-                        <!-- Definitions for Gradients -->
-                        <defs>
-                            <linearGradient id="casingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stop-color="#27272a"/>
-                                <stop offset="50%" stop-color="#52525b"/>
-                                <stop offset="100%" stop-color="#27272a"/>
-                            </linearGradient>
-                            <linearGradient id="reservoirGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="#1c1917"/>
-                                <stop offset="50%" stop-color="#292524"/>
-                                <stop offset="100%" stop-color="#1c1917"/>
-                            </linearGradient>
-                        </defs>
 
-                        <!-- Subsurface: Reservoir Layers -->
-                        <rect x="20" y="280" width="760" height="90" fill="url(#reservoirGrad)" stroke="#27272a" stroke-width="1.5"/>
-                        <text x="350" y="340" fill="#71717a" font-size="12" font-weight="600" letter-spacing="1">RESERVOIR LAYER</text>
-                        <text x="70" y="330" fill="#52525b" font-size="10">Sandstone Formation</text>
-                        
-                        <!-- Ground Level Line -->
-                        <line x1="20" y1="180" x2="780" y2="180" stroke="#52525b" stroke-width="3" stroke-dasharray="10, 4"/>
-                        <text x="30" y="174" fill="#52525b" font-size="10" font-weight="600">GROUND LEVEL</text>
-                        
-                        <!-- Subsurface: Outer Casing (Surface Casing) -->
-                        <rect x="110" y="180" width="80" height="70" fill="url(#casingGrad)" stroke="#27272a" stroke-width="1.5"/>
-                        <text x="50" y="225" fill="#71717a" font-size="10" text-anchor="end">Surface Casing</text>
-                        <line x1="110" y1="220" x2="60" y2="220" stroke="#3f3f46" stroke-width="1"/>
-
-                        <!-- Subsurface: Middle Casing (Intermediate Casing) -->
-                        <rect x="122" y="180" width="56" height="130" fill="url(#casingGrad)" stroke="#27272a" stroke-width="1.5"/>
-                        <text x="50" y="265" fill="#71717a" font-size="10" text-anchor="end">Intermediate Casing</text>
-                        <line x1="122" y1="260" x2="60" y2="260" stroke="#3f3f46" stroke-width="1"/>
-
-                        <!-- Subsurface: Production Tubing -->
-                        <rect x="136" y="110" width="28" height="250" fill="#09090b" stroke="#3b82f6" stroke-width="2"/>
-                        <text x="50" y="305" fill="#3b82f6" font-size="10" text-anchor="end">Production Tubing</text>
-                        <line x1="136" y1="300" x2="60" y2="300" stroke="#3b82f6" stroke-opacity="0.5" stroke-width="1"/>
-                        
-                        <!-- Annulus Space label -->
-                        <text x="250" y="225" fill="#71717a" font-size="10">Annulus Space</text>
-                        <path d="M 200 220 L 175 220" stroke="#3f3f46" stroke-width="1" fill="none"/>
-                        
-                        <!-- Perforations and Inflow Arrows -->
-                        <path d="M 115 340 L 132 340 M 115 350 L 132 350 M 185 340 L 168 340 M 185 350 L 168 350" stroke="#ef4444" stroke-width="2"/>
-                        <text x="150" y="362" fill="#ef4444" font-size="8" font-weight="bold" text-anchor="middle">PERFORATIONS</text>
-                        
-                        <!-- Subsurface Fluid Flow Animation (Oil Bubbles) -->
-                        <g id="oil-bubbles">
-                            <circle cx="150" cy="0" r="3" fill="#3b82f6" class="bubble bubble-d1"/>
-                            <circle cx="144" cy="0" r="2.5" fill="#60a5fa" class="bubble bubble-d2"/>
-                            <circle cx="156" cy="0" r="3.5" fill="#3b82f6" class="bubble bubble-d3"/>
-                            <circle cx="148" cy="0" r="2" fill="#60a5fa" class="bubble bubble-d4"/>
-                            <circle cx="152" cy="0" r="3" fill="#3b82f6" class="bubble bubble-d5"/>
-                        </g>
-
-                        <!-- Surface: Pipelines -->
-                        <!-- Wellhead to Choke -->
-                        <path d="M 150 110 L 260 110" fill="none" stroke="#27272a" stroke-width="6"/>
-                        <!-- Choke to gathering manifold and separator -->
-                        <path d="M 300 110 L 460 110 L 460 70 L 580 70 M 580 70 L 610 70" fill="none" stroke="#27272a" stroke-width="6"/>
-                        <path d="M 150 110 L 260 110 M 300 110 L 460 110 L 460 70 L 580 70" fill="none" stroke="#3b82f6" stroke-width="3" id="flow-line" class="animated-flow"/>
-
-                        <!-- Wellhead Christmas Tree -->
-                        <!-- Vertical valves blocks -->
-                        <rect x="132" y="70" width="36" height="110" rx="3" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
-                        <circle cx="150" cy="90" r="8" fill="#27272a" stroke="#52525b" stroke-width="1.5"/>
-                        <circle cx="150" cy="140" r="8" fill="#27272a" stroke="#52525b" stroke-width="1.5"/>
-                        <text x="150" y="60" fill="#fafafa" font-size="11" font-weight="700" text-anchor="middle">WELLHEAD</text>
-                        
-                        <!-- Wellhead Pressure Gauge Pwh -->
-                        <g transform="translate(100, 70)" id="gauge-whp">
-                            <circle cx="15" cy="15" r="12" fill="#18181b" stroke="#3b82f6" stroke-width="2"/>
-                            <line x1="15" y1="15" x2="15" y2="7" stroke="#3b82f6" stroke-width="2" id="needle-whp"/>
-                            <line x1="27" y1="15" x2="32" y2="15" stroke="#3f3f46" stroke-width="1.5"/>
-                            <text x="15" y="-3" fill="#a1a1aa" font-size="9" font-weight="bold" text-anchor="middle">Pwh</text>
-                        </g>
-
-                        <!-- Choke Valve -->
-                        <g transform="translate(260, 90)" id="valve-group">
-                            <polygon points="0,0 40,40 40,0 0,40" fill="#ea580c" stroke="#f97316" stroke-width="1.5"/>
-                            <rect x="15" y="10" width="10" height="20" fill="#f97316"/>
-                            <circle cx="20" cy="5" r="8" fill="#27272a" stroke="#3f3f46" stroke-width="1.5" id="valve-handwheel"/>
-                            <text x="20" y="-12" fill="#fafafa" font-size="10" font-weight="bold" text-anchor="middle">CHOKE VALVE</text>
-                            <text x="20" y="55" fill="#f97316" font-size="10" font-weight="bold" text-anchor="middle" id="valve-pct">30%</text>
-                        </g>
-
-                        <!-- Flowline Pressure Gauge Pfl -->
-                        <g transform="translate(370, 70)" id="gauge-flp">
-                            <circle cx="15" cy="15" r="12" fill="#18181b" stroke="#3b82f6" stroke-width="2"/>
-                            <line x1="15" y1="15" x2="15" y2="7" stroke="#3b82f6" stroke-width="2" id="needle-flp"/>
-                            <line x1="15" y1="27" x2="15" y2="35" stroke="#3f3f46" stroke-width="1.5"/>
-                            <text x="15" y="-3" fill="#a1a1aa" font-size="9" font-weight="bold" text-anchor="middle">Pfl</text>
-                        </g>
-
-                        <!-- Gathering Manifold / Piping elbow -->
-                        <rect x="448" y="100" width="24" height="20" rx="2" fill="#27272a" stroke="#3f3f46"/>
-                        <text x="460" y="135" fill="#71717a" font-size="9" text-anchor="middle">Manifold</text>
-
-                        <!-- Separator Vessel -->
-                        <rect x="580" y="40" width="150" height="70" rx="15" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
-                        <line x1="580" y1="90" x2="730" y2="90" stroke="#334155" stroke-width="1.5"/>
-                        <text x="655" y="76" fill="#fafafa" font-size="11" font-weight="700" text-anchor="middle">SEPARATOR VESSEL</text>
-                        
-                        <!-- Separator liquid level representation -->
-                        <rect x="582" y="80" width="146" height="28" rx="5" fill="#3b82f6" fill-opacity="0.1"/>
-                        <text x="655" y="98" fill="#71717a" font-size="8" text-anchor="middle">Liquid Phase</text>
-
-                        <!-- Bottom Hole Pressure Pbh callout -->
-                        <g transform="translate(85, 335)" id="gauge-bhp">
-                            <text x="-5" y="13" fill="#fb7185" font-size="9" font-weight="bold" text-anchor="end">Pbh (BHP)</text>
-                            <line x1="-3" y1="10" x2="48" y2="10" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="2, 2"/>
-                            <circle cx="50" cy="10" r="3" fill="#fb7185"/>
-                        </g>
-
-                        <!-- Callouts & Dynamic Displays -->
-                        <g transform="translate(130, 20)">
-                            <rect x="-55" y="0" width="90" height="20" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1"/>
-                            <text x="-10" y="13" fill="#3b82f6" font-size="10" font-weight="bold" id="label-whp">WHP: -</text>
-                        </g>
-                        <g transform="translate(355, 20)">
-                            <rect x="0" y="0" width="90" height="20" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1"/>
-                            <text x="45" y="13" fill="#3b82f6" font-size="10" font-weight="bold" text-anchor="middle" id="label-flp">FLP: -</text>
-                        </g>
-                        <g transform="translate(230, 310)">
-                            <rect x="0" y="0" width="100" height="20" rx="4" fill="#09090b" stroke="#fb7185" stroke-width="1"/>
-                            <text x="50" y="13" fill="#fb7185" font-size="10" font-weight="bold" text-anchor="middle" id="label-bhp">BHP: -</text>
-                        </g>
-                    </svg>
+                <!-- Industrial Alarm Annunciator Grid -->
+                <div class="panel alarm-annunciator">
+                    <div class="panel-header">
+                        <h2>🚨 Envelope Alarm Panel</h2>
+                    </div>
+                    <div class="alarm-grid-container">
+                        <div class="alarm-tile" id="alarm-whp-tile">
+                            <span class="alarm-light"></span>
+                            <div class="alarm-text">
+                                <span class="alarm-name">WHP LOW</span>
+                                <span class="alarm-desc">Limit &lt; 220 psi</span>
+                            </div>
+                        </div>
+                        <div class="alarm-tile" id="alarm-flp-tile">
+                            <span class="alarm-light"></span>
+                            <div class="alarm-text">
+                                <span class="alarm-name">FLP LOW</span>
+                                <span class="alarm-desc">Limit &lt; 150 psi</span>
+                            </div>
+                        </div>
+                        <div class="alarm-tile" id="alarm-bhp-tile">
+                            <span class="alarm-light"></span>
+                            <div class="alarm-text">
+                                <span class="alarm-name">BHP LOW</span>
+                                <span class="alarm-desc">Limit &lt; 2900 psi</span>
+                            </div>
+                        </div>
+                        <div class="alarm-tile" id="alarm-ramp-tile">
+                            <span class="alarm-light"></span>
+                            <div class="alarm-text">
+                                <span class="alarm-name">RAMP LIMIT</span>
+                                <span class="alarm-desc">&gt; 5.0% change/hr</span>
+                            </div>
+                        </div>
+                        <div class="alarm-tile status-tile" id="alarm-status-tile">
+                            <span class="status-indicator"></span>
+                            <span class="status-label" id="operating-state-label">NORMAL STATE</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -306,7 +390,7 @@
                     <button id="btn-clear-console" class="btn-clear">Clear Logs</button>
                 </div>
                 <div class="console-box" id="console-box">
-                    <div class="log-line system">[SYSTEM] Controller initialized. Press "Run Scenario" to execute the MPC simulation.</div>
+                    <div class="log-line system">[SYSTEM] Controller initialized. Select Control Mode or press "Run Simulation".</div>
                 </div>
             </div>
         </section>

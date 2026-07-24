@@ -1,3 +1,7 @@
+// Global disturbance state variables (accessible by the simulator)
+window.disturbanceBhp = 0.0;
+window.disturbanceFlp = 0.0;
+
 // Helper function to generate Gaussian (Normal) distributed random numbers
 // Using the Box-Muller transform
 function randomNormal(mean, stdDev) {
@@ -38,11 +42,15 @@ class WellSimulator {
         const n_f = addNoise ? randomNormal(0, this.params.FLP[3]) : 0.0;
         const n_b = addNoise ? randomNormal(0, this.params.BHP[3]) : 0.0;
         
+        // Read disturbance offsets
+        const distBhp = window.disturbanceBhp || 0.0;
+        const distFlp = window.disturbanceFlp || 0.0;
+        
         // Update states based on previous choke position
         this.Q = this.params.Q[0] * this.Q + this.params.Q[1] * this.choke + this.params.Q[2] + n_q;
         this.WHP = this.params.WHP[0] * this.WHP + this.params.WHP[1] * this.choke + this.params.WHP[2] + n_w;
-        this.FLP = this.params.FLP[0] * this.FLP + this.params.FLP[1] * this.choke + this.params.FLP[2] + n_f;
-        this.BHP = this.params.BHP[0] * this.BHP + this.params.BHP[1] * this.choke + this.params.BHP[2] + n_b;
+        this.FLP = this.params.FLP[0] * this.FLP + this.params.FLP[1] * this.choke + this.params.FLP[2] + n_f + distFlp;
+        this.BHP = this.params.BHP[0] * this.BHP + this.params.BHP[1] * this.choke + this.params.BHP[2] + n_b + distBhp;
         
         // Save current choke position for the next interval
         this.choke = chokePosition;
@@ -85,11 +93,15 @@ class MPCController {
         FLP_pred[0] = FLP_init;
         BHP_pred[0] = BHP_init;
         
+        // Read disturbance offsets to incorporate in predictions
+        const distBhp = window.disturbanceBhp || 0.0;
+        const distFlp = window.disturbanceFlp || 0.0;
+        
         for (let j = 1; j <= this.Hp; j++) {
             Q_pred[j] = this.params.Q[0] * Q_pred[j-1] + this.params.Q[1] * u_cand + this.params.Q[2];
             WHP_pred[j] = this.params.WHP[0] * WHP_pred[j-1] + this.params.WHP[1] * u_cand + this.params.WHP[2];
-            FLP_pred[j] = this.params.FLP[0] * FLP_pred[j-1] + this.params.FLP[1] * u_cand + this.params.FLP[2];
-            BHP_pred[j] = this.params.BHP[0] * BHP_pred[j-1] + this.params.BHP[1] * u_cand + this.params.BHP[2];
+            FLP_pred[j] = this.params.FLP[0] * FLP_pred[j-1] + this.params.FLP[1] * u_cand + this.params.FLP[2] + (j === 1 ? distFlp : 0);
+            BHP_pred[j] = this.params.BHP[0] * BHP_pred[j-1] + this.params.BHP[1] * u_cand + this.params.BHP[2] + (j === 1 ? distBhp : 0);
         }
         
         // Return trajectories (excluding initial measurement)
@@ -221,6 +233,11 @@ let sim_interval_id = null;
 let is_running = false;
 let max_scenario_steps = 60;
 
+// Production analytics stats
+let cumulative_prod = 0.0;
+let errors_sum = 0.0;
+let violations_count = 0;
+
 // Data History arrays
 let t_history = [];
 let target_history = [];
@@ -237,6 +254,12 @@ let chartPressures = null;
 let chartBHP = null;
 
 // DOM Element references
+const modeSelect = document.getElementById("mode-select");
+const manualOverrideGroup = document.querySelector(".manual-override-only");
+const manualChokeSlider = document.getElementById("manual-choke-slider");
+const manualChokeValue = document.getElementById("manual-choke-value");
+
+const autoGroup = document.querySelector(".auto-only");
 const scenarioSelect = document.getElementById("scenario-select");
 const manualGroup = document.querySelector(".manual-only");
 const targetSlider = document.getElementById("target-slider");
@@ -254,17 +277,32 @@ const paramBhpSlider = document.getElementById("param-bhp");
 const valueBhp = document.getElementById("value-bhp");
 const paramNoiseCheckbox = document.getElementById("param-noise");
 
+// Disturbance buttons
+const btnDepletion = document.getElementById("btn-dist-depletion");
+const btnBlockage = document.getElementById("btn-dist-blockage");
+const btnDistReset = document.getElementById("btn-dist-reset");
+
 const btnPlay = document.getElementById("btn-play");
 const btnStep = document.getElementById("btn-step");
 const btnReset = document.getElementById("btn-reset");
 const btnClearConsole = document.getElementById("btn-clear-console");
 const consoleBox = document.getElementById("console-box");
 
+// KPI panel elements
 const kpiTarget = document.getElementById("kpi-target");
 const kpiFlow = document.getElementById("kpi-flow");
 const kpiChoke = document.getElementById("kpi-choke");
-const kpiStatus = document.getElementById("kpi-status");
-const kpiHour = document.getElementById("kpi-hour");
+const kpiProd = document.getElementById("kpi-prod");
+const kpiError = document.getElementById("kpi-error");
+const kpiViolations = document.getElementById("kpi-violations");
+
+// Alarm elements
+const alarmWhpTile = document.getElementById("alarm-whp-tile");
+const alarmFlpTile = document.getElementById("alarm-flp-tile");
+const alarmBhpTile = document.getElementById("alarm-bhp-tile");
+const alarmRampTile = document.getElementById("alarm-ramp-tile");
+const alarmStatusTile = document.getElementById("alarm-status-tile");
+const operatingStateLabel = document.getElementById("operating-state-label");
 
 // SVG Elements
 const flowLine = document.getElementById("flow-line");
@@ -340,7 +378,7 @@ function initCharts() {
             },
             scales: {
                 x: { grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } },
-                y: { min: 20, max: 80, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
+                y: { min: 0, max: 100, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
             }
         }
     };
@@ -408,7 +446,7 @@ function initCharts() {
             },
             scales: {
                 x: { grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } },
-                y: { min: 2850, max: 3150, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
+                y: { min: 2750, max: 3150, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
             }
         }
     };
@@ -442,6 +480,10 @@ function resetSimulation() {
     controller = new MPCController(Hp, lambda, whp_min, flp_min, bhp_min);
     
     current_hour = 0;
+    cumulative_prod = 0.0;
+    errors_sum = 0.0;
+    violations_count = 0;
+    
     t_history.length = 0;
     target_history.length = 0;
     Q_history.length = 0;
@@ -463,15 +505,29 @@ function resetSimulation() {
     kpiTarget.textContent = getSetpoint(0).toFixed(1);
     kpiFlow.textContent = simulator.Q.toFixed(1);
     kpiChoke.textContent = simulator.choke.toFixed(1);
-    kpiStatus.textContent = "SAFE";
-    kpiStatus.className = "kpi-val status-safe";
-    kpiHour.textContent = "Hour 0";
+    kpiProd.textContent = "0.0";
+    kpiError.textContent = "0.0";
+    kpiViolations.textContent = "0";
+    
+    // Reset alarm panels
+    alarmWhpTile.className = "alarm-tile";
+    alarmFlpTile.className = "alarm-tile";
+    alarmBhpTile.className = "alarm-tile";
+    alarmRampTile.className = "alarm-tile";
+    alarmStatusTile.className = "alarm-tile status-tile";
+    operatingStateLabel.textContent = "NORMAL STATE";
     
     // Update SVG values
     valvePct.textContent = "30.0%";
     labelWHP.textContent = `WHP: ${simulator.WHP.toFixed(1)} psi`;
     labelFLP.textContent = `FLP: ${simulator.FLP.toFixed(1)} psi`;
     labelBHP.textContent = `BHP: ${simulator.BHP.toFixed(1)} psi`;
+    
+    // Synch sliders
+    if (modeSelect.value === "manual_override") {
+        manualChokeSlider.value = 30.0;
+        manualChokeValue.textContent = "30.0%";
+    }
     
     flowLine.style.animationPlayState = "paused";
     document.querySelectorAll(".bubble").forEach(b => b.style.animationPlayState = "paused");
@@ -486,6 +542,10 @@ function resetSimulation() {
 
 // Helper to determine target setpoint based on selected scenario and hour
 function getSetpoint(hour) {
+    if (modeSelect.value === "manual_override") {
+        return simulator.Q; // Setpoint tracks flow in manual override mode
+    }
+    
     const sc = scenarioSelect.value;
     if (sc === "scenario_a") {
         max_scenario_steps = 40;
@@ -508,17 +568,13 @@ function executeStep() {
         stopSimulation();
         logToConsole(`Scenario completed.`, "system");
         
-        // Print Summary block if Scenario C finishes
-        if (scenarioSelect.value === "scenario_c") {
-            // Compute final 10 hour average rate
-            const final_rates = Q_history.slice(-10);
-            const avg_rate = final_rates.reduce((a, b) => a + b, 0) / final_rates.length;
-            
+        // Print Summary block if Scenario C finishes in Auto mode
+        if (modeSelect.value === "auto" && scenarioSelect.value === "scenario_c") {
             logToConsole("====================================================", "system");
             logToConsole("Scenario C Summary: Infeasible Target Analysis", "system");
             logToConsole("====================================================", "system");
             logToConsole("Target Requested:        200.0 bbl/hr", "system");
-            logToConsole(`Maximum Safe Production: ${avg_rate.toFixed(1)} bbl/hr`, "system");
+            logToConsole(`Maximum Safe Production: ${simulator.Q.toFixed(1)} bbl/hr`, "system");
             logToConsole("Reason:                  BHP constraint active (limit >= 2900 psi)", "warning");
             logToConsole("                         WHP constraint active (limit >= 220 psi)", "warning");
             logToConsole("Controller Status:       Settled at maximum safe operating point.", "safe");
@@ -535,14 +591,65 @@ function executeStep() {
     const BHP = simulator.BHP;
     const choke = simulator.choke;
     
-    // Call controller
-    const controlResult = controller.calculateControl(Q, WHP, FLP, BHP, choke, target);
-    const nextChoke = controlResult.recommended_choke;
-    const diag = controlResult.diagnostics;
+    let nextChoke = choke;
+    let diag = {};
+    let isManualOverride = modeSelect.value === "manual_override";
+    
+    if (isManualOverride) {
+        // Manual Operator mode
+        nextChoke = parseFloat(manualChokeSlider.value);
+        
+        // Check if manual move exceeds ramp-rate limit (+/- 5%) for warning display
+        const choke_move = Math.abs(nextChoke - choke);
+        const rampViol = choke_move > 5.05;
+        
+        // Run trajectory check just on this single manual choke value to evaluate safety
+        const traj = controller.predictTrajectory(nextChoke, Q, WHP, FLP, BHP);
+        let isSafe = true;
+        let rejectReason = "None";
+        for (let j = 0; j < controller.Hp; j++) {
+            if (traj.BHP[j] < controller.bhp_min) { isSafe = false; rejectReason = `Predicted BHP drop to ${traj.BHP[j].toFixed(0)} psi (Limit >= ${controller.bhp_min})`; }
+            if (traj.WHP[j] < controller.whp_min) { isSafe = false; rejectReason = `Predicted WHP drop to ${traj.WHP[j].toFixed(0)} psi (Limit >= ${controller.whp_min})`; }
+            if (traj.FLP[j] < controller.flp_min) { isSafe = false; rejectReason = `Predicted FLP drop to ${traj.FLP[j].toFixed(0)} psi (Limit >= ${controller.flp_min})`; }
+        }
+        
+        diag = {
+            expected_flow: traj.Q[controller.Hp - 1],
+            expected_whp: traj.WHP[controller.Hp - 1],
+            expected_flp: traj.FLP[controller.Hp - 1],
+            expected_bhp: traj.BHP[controller.Hp - 1],
+            num_safe: isSafe ? 101 : 0,
+            num_rejected: isSafe ? 0 : 101,
+            rejection_example: rejectReason,
+            status: isSafe ? 'SAFE' : 'UNSAFE_SYSTEM_LIMIT',
+            ramp_violation: rampViol
+        };
+    } else {
+        // Autonomous MPC mode
+        const controlResult = controller.calculateControl(Q, WHP, FLP, BHP, choke, target);
+        nextChoke = controlResult.recommended_choke;
+        diag = controlResult.diagnostics;
+        diag.ramp_violation = false;
+    }
     
     // Step Simulator
     const addNoise = paramNoiseCheckbox.checked;
     const newStates = simulator.step(nextChoke, addNoise);
+    
+    // Calculate Advanced Performance Analytics
+    cumulative_prod += newStates.Q;
+    errors_sum += Math.abs(newStates.Q - target);
+    const mae = errors_sum / current_hour;
+    
+    // Check for active pressure violations on the true simulator state
+    const whpViol = newStates.WHP < controller.whp_min;
+    const flpViol = newStates.FLP < controller.flp_min;
+    const bhpViol = newStates.BHP < controller.bhp_min;
+    const rampViol = diag.ramp_violation;
+    const anyViol = whpViol || flpViol || bhpViol;
+    if (anyViol) {
+        violations_count++;
+    }
     
     // Append to histories
     t_history.push(current_hour);
@@ -554,23 +661,36 @@ function executeStep() {
     bhp_history.push(newStates.BHP);
     
     // Update KPIs
-    kpiTarget.textContent = target.toFixed(1);
+    kpiTarget.textContent = isManualOverride ? "MANUAL" : target.toFixed(1);
     kpiFlow.textContent = newStates.Q.toFixed(1);
     kpiChoke.textContent = nextChoke.toFixed(1);
-    kpiHour.textContent = `Hour ${current_hour}`;
+    kpiProd.textContent = cumulative_prod.toFixed(0);
+    kpiError.textContent = isManualOverride ? "-" : mae.toFixed(1);
+    kpiViolations.textContent = violations_count;
     
-    // Safety status indicator color
-    let statusClass = "safe";
-    if (diag.status === "LIMIT ACTIVE") {
-        statusClass = "warning";
+    // Toggle active classes on industrial alarm annunciator panel
+    alarmWhpTile.className = "alarm-tile" + (whpViol ? " active" : "");
+    alarmFlpTile.className = "alarm-tile" + (flpViol ? " active" : "");
+    alarmBhpTile.className = "alarm-tile" + (bhpViol ? " active" : "");
+    alarmRampTile.className = "alarm-tile" + (rampViol ? " active warning" : "");
+    
+    // Update alarm status tile and class
+    if (anyViol) {
+        alarmStatusTile.className = "alarm-tile status-tile active";
+        operatingStateLabel.textContent = "ALARM ACTIVE";
+        kpiStatus.textContent = "ALARM";
+        kpiStatus.className = "kpi-val status-danger";
+    } else if (diag.status === "LIMIT ACTIVE") {
+        alarmStatusTile.className = "alarm-tile status-tile warning";
+        operatingStateLabel.textContent = "LIMIT ACTIVE";
         kpiStatus.textContent = "LIMIT ACTIVE";
-    } else if (diag.status === "UNSAFE_SYSTEM_LIMIT") {
-        statusClass = "danger";
-        kpiStatus.textContent = "UNSAFE";
+        kpiStatus.className = "kpi-val status-warning";
     } else {
+        alarmStatusTile.className = "alarm-tile status-tile";
+        operatingStateLabel.textContent = "NORMAL STATE";
         kpiStatus.textContent = "SAFE";
+        kpiStatus.className = "kpi-val status-safe";
     }
-    kpiStatus.className = `kpi-val status-${statusClass}`;
     
     // Update SVG layout values
     valvePct.textContent = `${nextChoke.toFixed(1)}%`;
@@ -587,11 +707,25 @@ function executeStep() {
     }
     
     // Terminal logging
-    const logText = `Hour ${current_hour.toString().padStart(2)} | Target: ${target.toFixed(1)} | Rec Choke: ${nextChoke.toFixed(1)}% | Expected Flow: ${diag.expected_flow.toFixed(1)} | Expected BHP: ${diag.expected_bhp.toFixed(0)} | Status: ${diag.status} | Candidates: 101 | Safe: ${diag.num_safe} | Rejected: ${diag.num_rejected}`;
-    logToConsole(logText, statusClass);
+    const logPrefix = isManualOverride ? "[MANUAL]" : "[AUTO]";
+    const logText = `${logPrefix} Hour ${current_hour.toString().padStart(2)} | Target: ${isManualOverride ? '-' : target.toFixed(1)} | Choke: ${nextChoke.toFixed(1)}% | Expected Flow: ${diag.expected_flow.toFixed(1)} | Expected BHP: ${diag.expected_bhp.toFixed(0)} | Status: ${diag.status} | Safe Candidates: ${diag.num_safe} | Rejected: ${diag.num_rejected}`;
+    
+    let logType = "system";
+    if (anyViol) {
+        logType = "danger";
+    } else if (diag.status === "LIMIT ACTIVE") {
+        logType = "warning";
+    } else {
+        logType = "safe";
+    }
+    
+    logToConsole(logText, logType);
     
     if (diag.num_rejected > 0) {
-        logToConsole(`  +- Example rejection: ${diag.rejection_example}`, "sub");
+        logToConsole(`  +- Rejection warning: ${diag.rejection_example}`, "sub");
+    }
+    if (rampViol) {
+        logToConsole(`  +- Choke ramp rate warning: choke changed by ${choke_diff.toFixed(1)}%/hr, violating +/- 5.0%/hr limit!`, "sub");
     }
     
     updateCharts();
@@ -627,7 +761,7 @@ function startSimulation() {
 function stopSimulation() {
     if (!is_running) return;
     is_running = false;
-    btnPlay.textContent = "▶ Run Scenario";
+    btnPlay.textContent = "▶ Run Simulation";
     btnPlay.className = "btn btn-primary";
     flowLine.style.animationPlayState = "paused";
     document.querySelectorAll(".bubble").forEach(b => b.style.animationPlayState = "paused");
@@ -641,6 +775,35 @@ function stopSimulation() {
 
 // Set up UI Event listeners
 function setupListeners() {
+    // Mode selection handler
+    modeSelect.addEventListener("change", () => {
+        const mode = modeSelect.value;
+        if (mode === "manual_override") {
+            manualOverrideGroup.style.display = "block";
+            autoGroup.style.display = "none";
+            manualGroup.style.display = "none";
+            logToConsole("Operator switched to Manual Override. MPC Controller Disabled.", "warning");
+        } else {
+            manualOverrideGroup.style.display = "none";
+            autoGroup.style.display = "block";
+            const sc = scenarioSelect.value;
+            if (sc === "manual") {
+                manualGroup.style.display = "block";
+            } else {
+                manualGroup.style.display = "none";
+            }
+            logToConsole("Operator switched to Autonomous Control. MPC Controller Enabled.", "safe");
+        }
+        resetSimulation();
+    });
+
+    manualChokeSlider.addEventListener("input", () => {
+        manualChokeValue.textContent = `${parseFloat(manualChokeSlider.value).toFixed(1)}%`;
+        if (modeSelect.value === "manual_override") {
+            kpiChoke.textContent = parseFloat(manualChokeSlider.value).toFixed(1);
+        }
+    });
+
     scenarioSelect.addEventListener("change", () => {
         const sc = scenarioSelect.value;
         if (sc === "manual") {
@@ -678,6 +841,27 @@ function setupListeners() {
     paramBhpSlider.addEventListener("input", () => {
         valueBhp.textContent = `${paramBhpSlider.value} psi`;
         resetSimulation();
+    });
+
+    // Disturbance handlers
+    btnDepletion.addEventListener("click", () => {
+        window.disturbanceBhp = -100.0;
+        logToConsole("FIELD ALARM: Reservoir Depletion Disturbance Injected! BHP drops by 100 psi.", "danger");
+        btnDepletion.className = "btn btn-danger btn-sm";
+    });
+
+    btnBlockage.addEventListener("click", () => {
+        window.disturbanceFlp = 30.0;
+        logToConsole("FIELD ALARM: Flowline Blockage Disturbance Injected! FLP spikes by 30 psi.", "danger");
+        btnBlockage.className = "btn btn-danger btn-sm";
+    });
+
+    btnDistReset.addEventListener("click", () => {
+        window.disturbanceBhp = 0.0;
+        window.disturbanceFlp = 0.0;
+        btnDepletion.className = "btn btn-secondary btn-sm";
+        btnBlockage.className = "btn btn-secondary btn-sm";
+        logToConsole("Field disturbances reset. Well conditions returned to baseline.", "safe");
     });
 
     btnPlay.addEventListener("click", () => {

@@ -112,7 +112,7 @@ body {
 }
 
 .panel-header h2 {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -135,7 +135,7 @@ body {
 }
 
 .control-group label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -220,6 +220,31 @@ input[type="range"]::-webkit-slider-thumb:hover {
     text-transform: none;
     font-size: 12px;
     cursor: pointer;
+}
+
+/* Disturbance Injection Styling */
+.control-panel-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+
+.control-panel-section h3 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.disturbance-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 11px;
 }
 
 /* Advanced settings details */
@@ -345,10 +370,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
     gap: 20px;
 }
 
-/* KPI Row */
+/* KPI Row (Expanded to 6 Columns) */
 .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 15px;
 }
 
@@ -356,14 +381,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px 20px;
+    padding: 12px 15px;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-premium);
 }
 
 .kpi-label {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -371,14 +396,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .kpi-val {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
-    margin: 5px 0 2px 0;
+    margin: 4px 0 1px 0;
 }
 
 .kpi-unit {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-secondary);
 }
 
@@ -395,6 +420,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .status-danger {
     color: var(--color-danger) !important;
     text-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+}
+
+/* Schematic + Alarm Grid Panel layout */
+.schematic-layout-grid {
+    display: grid;
+    grid-template-columns: 1fr 250px;
+    gap: 20px;
 }
 
 /* Diagram Panel */
@@ -467,6 +499,133 @@ input[type="range"]::-webkit-slider-thumb:hover {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Alarm Annunciator Panel Styling */
+.alarm-annunciator {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.alarm-grid-container {
+    flex: 1;
+    display: grid;
+    grid-template-rows: repeat(4, 1fr) auto;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.alarm-tile {
+    background-color: #09090b;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.alarm-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #27272a; /* Dim / OFF */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.alarm-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.alarm-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.alarm-desc {
+    font-size: 9px;
+    color: #52525b;
+}
+
+/* Active alarm state styles */
+.alarm-tile.active {
+    background-color: rgba(239, 68, 68, 0.03);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.alarm-tile.active .alarm-light {
+    background-color: var(--color-danger);
+    box-shadow: 0 0 10px var(--color-danger);
+    animation: flashAlarm 0.8s infinite alternate;
+}
+
+.alarm-tile.active .alarm-name {
+    color: var(--color-danger);
+}
+
+@keyframes flashAlarm {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+/* Active Alert State (Warning) */
+.alarm-tile.warning {
+    background-color: rgba(245, 158, 11, 0.03);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.alarm-tile.warning .alarm-light {
+    background-color: var(--color-warning);
+    box-shadow: 0 0 10px var(--color-warning);
+}
+
+.alarm-tile.warning .alarm-name {
+    color: var(--color-warning);
+}
+
+/* State tile (bottom of alarm panel) */
+.status-tile {
+    justify-content: center;
+    background-color: #18181b;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-success);
+    box-shadow: 0 0 8px var(--color-success);
+}
+
+.status-indicator.warning {
+    background-color: var(--color-warning);
+    box-shadow: 0 0 8px var(--color-warning);
+}
+
+.status-indicator.danger {
+    background-color: var(--color-danger);
+    box-shadow: 0 0 8px var(--color-danger);
+    animation: pulseRedAlert 1.5s infinite;
+}
+
+@keyframes pulseRedAlert {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.status-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 /* Charts Grid */
@@ -564,7 +723,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Manual styling when selected */
-.manual-only {
+.manual-only, .manual-override-only {
     border: 1px dashed var(--border-color);
     padding: 12px;
     border-radius: 6px;
