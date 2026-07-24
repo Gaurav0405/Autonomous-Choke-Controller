@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Choke Controller Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-logo">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            <div class="header-text">
+                <h1>Autonomous Production Choke Controller</h1>
+                <p>Naturally Flowing Well Control & Optimization Dashboard</p>
+            </div>
+        </div>
+        <div class="header-meta">
+            <div class="student-info">
+                <span class="student-name">Gaurav Jain</span>
+                <span class="student-id">23BAI10053</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-layout">
+        <!-- LEFT: Control Panel -->
+        <section class="panel control-panel">
+            <div class="panel-header">
+                <h2>🔧 Controller & Simulator Settings</h2>
+            </div>
+            
+            <div class="control-group">
+                <label for="scenario-select">Select Simulation Scenario</label>
+                <select id="scenario-select">
+                    <option value="scenario_a">Startup to Target (Scenario A)</option>
+                    <option value="scenario_b">Target Tracking (Scenario B)</option>
+                    <option value="scenario_c">Infeasible Target (Scenario C)</option>
+                    <option value="manual">Manual Setpoint Profile</option>
+                </select>
+            </div>
+
+            <div class="control-group manual-only" style="display: none;">
+                <div class="label-row">
+                    <label for="target-slider">Target Oil Rate (bbl/hr)</label>
+                    <span id="target-value" class="badge">120 bbl/hr</span>
+                </div>
+                <input type="range" id="target-slider" min="50" max="250" step="5" value="120">
+            </div>
+
+            <!-- Accordion for Advanced Parameters -->
+            <details class="advanced-settings" open>
+                <summary>⚙️ Advanced MPC & Safety Envelope Params</summary>
+                <div class="settings-content">
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="param-hp">Prediction Horizon Hp (hours)</label>
+                            <span id="value-hp">30h</span>
+                        </div>
+                        <input type="range" id="param-hp" min="5" max="50" step="1" value="30">
+                    </div>
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="param-lambda">Choke Move Penalty (λ)</label>
+                            <span id="value-lambda">0.5</span>
+                        </div>
+                        <input type="range" id="param-lambda" min="0.1" max="2.0" step="0.1" value="0.5">
+                    </div>
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="param-whp">Min WHP Limit (psi)</label>
+                            <span id="value-whp">220 psi</span>
+                        </div>
+                        <input type="range" id="param-whp" min="180" max="240" step="5" value="220">
+                    </div>
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="param-flp">Min FLP Limit (psi)</label>
+                            <span id="value-flp">150 psi</span>
+                        </div>
+                        <input type="range" id="param-flp" min="120" max="170" step="5" value="150">
+                    </div>
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="param-bhp">Min BHP Limit (psi)</label>
+                            <span id="value-bhp">2900 psi</span>
+                        </div>
+                        <input type="range" id="param-bhp" min="2800" max="3000" step="10" value="2900">
+                    </div>
+                    <div class="control-group checkbox-row">
+                        <input type="checkbox" id="param-noise" checked>
+                        <label for="param-noise">Add Process Noise</label>
+                    </div>
+                </div>
+            </details>
+
+            <div class="action-buttons">
+                <button id="btn-play" class="btn btn-primary">▶ Run Scenario</button>
+                <button id="btn-step" class="btn btn-secondary">⏭ Step 1 Hr</button>
+                <button id="btn-reset" class="btn btn-danger">🔄 Reset</button>
+            </div>
+            
+            <div class="well-details-card">
+                <h3>📊 Identified ARX Well Equations</h3>
+                <div class="equation-list">
+                    <div class="eq-item"><strong>Oil Flow Rate:</strong> <span>Q(t) = 0.824*Q(t-1) + 0.320*u(t-1) + 6.93 (Gain: +1.82)</span></div>
+                    <div class="eq-item"><strong>Wellhead Pres (WHP):</strong> <span>WHP(t) = 0.889*WHP(t-1) - 0.176*u(t-1) + 35.38 (Gain: -1.59)</span></div>
+                    <div class="eq-item"><strong>Flowline Pres (FLP):</strong> <span>FLP(t) = 0.863*FLP(t-1) - 0.136*u(t-1) + 30.14 (Gain: -0.99)</span></div>
+                    <div class="eq-item"><strong>Bottom Hole Pres (BHP):</strong> <span>BHP(t) = 0.926*BHP(t-1) - 0.623*u(t-1) + 253.76 (Gain: -8.38)</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT: Dashboard Visuals -->
+        <section class="dashboard-visuals">
+            <!-- Row 1: KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Target Rate</span>
+                    <span id="kpi-target" class="kpi-val">-</span>
+                    <span class="kpi-unit">bbl/hr</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Actual Flow Rate</span>
+                    <span id="kpi-flow" class="kpi-val">-</span>
+                    <span class="kpi-unit">bbl/hr</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Production Choke</span>
+                    <span id="kpi-choke" class="kpi-val">-</span>
+                    <span class="kpi-unit">%</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Safety Status</span>
+                    <span id="kpi-status" class="kpi-val status-safe">SAFE</span>
+                    <span class="kpi-unit" id="kpi-hour">Hour 0</span>
+                </div>
+            </div>
+
+            <!-- Row 2: Well Diagram -->
+            <div class="panel diagram-panel">
+                <div class="panel-header">
+                    <h2>🗺️ Process Flow Schematic</h2>
+                </div>
+                <div class="schematic-container">
+                    <svg viewBox="0 0 800 200" class="schematic-svg">
+                        <!-- Pipelines -->
+                        <path d="M 50 150 L 150 150 L 150 70 L 300 70 L 450 70 L 550 70 L 550 110 L 700 110" fill="none" stroke="#475569" stroke-width="8" id="pipeline"/>
+                        <path d="M 50 150 L 150 150 L 150 70 L 300 70 L 450 70 L 550 70 L 550 110 L 700 110" fill="none" stroke="#0ea5e9" stroke-width="4" id="flow-line" class="animated-flow"/>
+                        
+                        <!-- Wellhead -->
+                        <rect x="120" y="50" width="60" height="40" rx="4" fill="#334155" stroke="#64748b" stroke-width="2"/>
+                        <rect x="140" y="90" width="20" height="70" fill="#334155" stroke="#64748b" stroke-width="2"/>
+                        <text x="150" y="75" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">WELLHEAD</text>
+                        <text x="70" y="140" fill="#94a3b8" font-size="10">Reservoir (BHP)</text>
+                        
+                        <!-- Choke Valve -->
+                        <g transform="translate(300, 50)" id="valve-group">
+                            <polygon points="0,0 40,40 40,0 0,40" fill="#f97316" stroke="#ea580c" stroke-width="2"/>
+                            <rect x="15" y="10" width="10" height="20" fill="#ea580c"/>
+                            <circle cx="20" cy="5" r="8" fill="#475569" stroke="#64748b" stroke-width="2" id="valve-handwheel"/>
+                            <text x="20" y="-10" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">CHOKE VALVE</text>
+                            <text x="20" y="55" fill="#f97316" font-size="10" font-weight="bold" text-anchor="middle" id="valve-pct">30%</text>
+                        </g>
+
+                        <!-- Separator -->
+                        <rect x="600" y="70" width="120" height="80" rx="10" fill="#334155" stroke="#64748b" stroke-width="2"/>
+                        <text x="660" y="115" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">SEPARATOR</text>
+                        
+                        <!-- Dynamic Labels -->
+                        <g transform="translate(180, 45)">
+                            <rect x="0" y="0" width="80" height="18" rx="3" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+                            <text x="40" y="13" fill="#38bdf8" font-size="10" text-anchor="middle" id="label-whp">WHP: -</text>
+                        </g>
+                        <g transform="translate(420, 45)">
+                            <rect x="0" y="0" width="80" height="18" rx="3" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+                            <text x="40" y="13" fill="#38bdf8" font-size="10" text-anchor="middle" id="label-flp">FLP: -</text>
+                        </g>
+                        <g transform="translate(80, 175)">
+                            <rect x="0" y="0" width="90" height="18" rx="3" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+                            <text x="45" y="13" fill="#a78bfa" font-size="10" text-anchor="middle" id="label-bhp">BHP: -</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Row 3: Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <canvas id="chart-rate"></canvas>
+                </div>
+                <div class="chart-card">
+                    <canvas id="chart-choke"></canvas>
+                </div>
+                <div class="chart-card">
+                    <canvas id="chart-pressures-top"></canvas>
+                </div>
+                <div class="chart-card">
+                    <canvas id="chart-bhp"></canvas>
+                </div>
+            </div>
+
+            <!-- Row 4: Terminal Log Console -->
+            <div class="panel console-panel">
+                <div class="panel-header">
+                    <h2>💻 Real-Time Controller Decision Terminal</h2>
+                    <button id="btn-clear-console" class="btn-clear">Clear Logs</button>
+                </div>
+                <div class="console-box" id="console-box">
+                    <div class="log-line system">[SYSTEM] Controller initialized. Press "Run Scenario" to execute the MPC simulation.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>Smart Automation & Energy Systems Submission • Problem Statement ID: SIH1747 • IIT Hackathon 2026</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
