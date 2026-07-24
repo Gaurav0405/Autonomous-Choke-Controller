@@ -543,8 +543,10 @@ function resetSimulation() {
     kpiViolations.textContent = "0";
     kpiViolations.className = "kpi-val status-safe";
     
-    kpiStatus.textContent = "NORMAL";
-    kpiStatus.className = "kpi-val status-safe";
+    if (kpiStatus) {
+        kpiStatus.textContent = "NORMAL";
+        kpiStatus.className = "kpi-val status-safe";
+    }
     
     // Reset alarm panels
     alarmWhpTile.className = "alarm-tile";
@@ -814,18 +816,24 @@ function executeStep() {
     if (anyViol) {
         alarmStatusTile.className = "alarm-tile status-tile active";
         operatingStateLabel.textContent = "ALARM ACTIVE";
-        kpiStatus.textContent = "VIOLATION";
-        kpiStatus.className = "kpi-val status-danger";
+        if (kpiStatus) {
+            kpiStatus.textContent = "VIOLATION";
+            kpiStatus.className = "kpi-val status-danger";
+        }
     } else if (diag.status === "LIMIT ACTIVE") {
         alarmStatusTile.className = "alarm-tile status-tile warning";
         operatingStateLabel.textContent = "LIMIT ACTIVE";
-        kpiStatus.textContent = "CONSTRAINT ACTIVE";
-        kpiStatus.className = "kpi-val status-warning";
+        if (kpiStatus) {
+            kpiStatus.textContent = "CONSTRAINT ACTIVE";
+            kpiStatus.className = "kpi-val status-warning";
+        }
     } else {
         alarmStatusTile.className = "alarm-tile status-tile";
         operatingStateLabel.textContent = "NORMAL STATE";
-        kpiStatus.textContent = "SAFE";
-        kpiStatus.className = "kpi-val status-safe";
+        if (kpiStatus) {
+            kpiStatus.textContent = "SAFE";
+            kpiStatus.className = "kpi-val status-safe";
+        }
     }
     
     // Live update Simulation Summary card
