@@ -474,6 +474,7 @@ function resetSimulation() {
     labelBHP.textContent = `BHP: ${simulator.BHP.toFixed(1)} psi`;
     
     flowLine.style.animationPlayState = "paused";
+    document.querySelectorAll(".bubble").forEach(b => b.style.animationPlayState = "paused");
     valveHandwheel.setAttribute("class", "");
     
     clearConsole();
@@ -616,6 +617,7 @@ function startSimulation() {
     btnPlay.textContent = "⏸ Pause Simulation";
     btnPlay.className = "btn btn-secondary";
     flowLine.style.animationPlayState = "running";
+    document.querySelectorAll(".bubble").forEach(b => b.style.animationPlayState = "running");
     
     sim_interval_id = setInterval(() => {
         executeStep();
@@ -628,6 +630,7 @@ function stopSimulation() {
     btnPlay.textContent = "▶ Run Scenario";
     btnPlay.className = "btn btn-primary";
     flowLine.style.animationPlayState = "paused";
+    document.querySelectorAll(".bubble").forEach(b => b.style.animationPlayState = "paused");
     valveHandwheel.setAttribute("class", "");
     
     if (sim_interval_id) {
