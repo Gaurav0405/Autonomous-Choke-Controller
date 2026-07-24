@@ -1,22 +1,22 @@
 /* Global CSS resets and custom variables */
 :root {
-    --bg-main: #0f172a;
-    --bg-card: #1e293b;
-    --border-color: #334155;
+    --bg-main: #09090b;          /* True deep black (Zinc-950) */
+    --bg-card: #18181b;          /* Sleek charcoal card background (Zinc-900) */
+    --border-color: #27272a;      /* Thin clean borders (Zinc-800) */
     
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    --text-primary: #fafafa;     /* High contrast white (Zinc-50) */
+    --text-secondary: #a1a1aa;   /* Muted zinc grey (Zinc-400) */
     
-    --color-primary: #0ea5e9;    /* Neon blue */
-    --color-success: #10b981;    /* Neon green */
-    --color-warning: #f97316;    /* Amber */
-    --color-danger: #ef4444;     /* Red */
+    --color-primary: #3b82f6;    /* Premium electric blue */
+    --color-success: #10b981;    /* Emerald green */
+    --color-warning: #f59e0b;    /* Warm amber */
+    --color-danger: #ef4444;     /* Alert red */
     
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     
-    --shadow-premium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1), 0 0 0 1px rgb(255 255 255 / 0.02);
-    --shadow-glow: 0 0 15px rgb(14 165 233 / 0.15);
+    --shadow-premium: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 15px rgb(59 130 246 / 0.1);
 }
 
 * {
@@ -40,7 +40,7 @@ body {
 .app-header {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 15px 25px;
     display: flex;
     justify-content: space-between;
@@ -61,13 +61,13 @@ body {
 }
 
 .header-text h1 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     letter-spacing: -0.5px;
 }
 
 .header-text p {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-secondary);
 }
 
@@ -79,12 +79,12 @@ body {
 
 .student-name {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .student-id {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     color: var(--color-primary);
 }
 
@@ -100,19 +100,19 @@ body {
 .panel {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     box-shadow: var(--shadow-premium);
     overflow: hidden;
 }
 
 .panel-header {
-    background-color: rgb(255 255 255 / 0.02);
+    background-color: rgba(255, 255, 255, 0.01);
     border-bottom: 1px solid var(--border-color);
     padding: 12px 20px;
 }
 
 .panel-header h2 {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -135,7 +135,7 @@ body {
 }
 
 .control-group label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -148,9 +148,9 @@ body {
 }
 
 .badge {
-    background-color: rgb(14 165 233 / 0.1);
+    background-color: rgba(59, 130, 246, 0.1);
     color: var(--color-primary);
-    border: 1px solid rgb(14 165 233 / 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.2);
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 11px;
@@ -163,7 +163,7 @@ select {
     color: var(--text-primary);
     padding: 10px 15px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     outline: none;
     cursor: pointer;
     transition: border-color 0.2s;
@@ -178,8 +178,8 @@ input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 6px;
-    border-radius: 3px;
+    height: 4px;
+    border-radius: 2px;
     background: var(--border-color);
     outline: none;
 }
@@ -187,17 +187,18 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: var(--color-primary);
     cursor: pointer;
-    box-shadow: 0 0 5px var(--color-primary);
+    border: 2px solid var(--bg-card);
     transition: background 0.15s, transform 0.15s;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.15);
+    transform: scale(1.2);
+    background: #60a5fa;
 }
 
 /* Checkbox */
@@ -209,28 +210,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .checkbox-row input {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     cursor: pointer;
+    accent-color: var(--color-primary);
 }
 
 .checkbox-row label {
     text-transform: none;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
 }
 
 /* Advanced settings details */
 .advanced-settings {
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: rgb(0 0 0 / 0.1);
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.2);
     overflow: hidden;
 }
 
 .advanced-settings summary {
     padding: 10px 15px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
@@ -255,9 +257,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .btn {
     border: none;
-    padding: 12px 20px;
+    padding: 10px 20px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -277,27 +279,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .btn-primary:hover {
-    background-color: #0284c7;
+    background-color: #2563eb;
 }
 
 .btn-secondary {
-    background-color: #334155;
+    background-color: #27272a;
     color: var(--text-primary);
     border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-    background-color: #475569;
+    background-color: #3f3f46;
 }
 
 .btn-danger {
-    background-color: rgb(239 68 68 / 0.1);
+    background-color: rgba(239, 68, 68, 0.05);
     color: var(--color-danger);
-    border: 1px solid rgb(239 68 68 / 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
 .btn-danger:hover {
-    background-color: rgb(239 68 68 / 0.2);
+    background-color: rgba(239, 68, 68, 0.15);
 }
 
 /* Well info card */
@@ -307,7 +309,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .well-details-card h3 {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -353,7 +355,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .kpi-card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 15px 20px;
     display: flex;
     flex-direction: column;
@@ -361,7 +363,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .kpi-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -369,30 +371,30 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .kpi-val {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
     margin: 5px 0 2px 0;
 }
 
 .kpi-unit {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-secondary);
 }
 
 .status-safe {
     color: var(--color-success) !important;
-    text-shadow: 0 0 10px rgb(16 185 129 / 0.2);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
 }
 
 .status-warning {
     color: var(--color-warning) !important;
-    text-shadow: 0 0 10px rgb(249 115 22 / 0.2);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
 }
 
 .status-danger {
     color: var(--color-danger) !important;
-    text-shadow: 0 0 10px rgb(239 68 68 / 0.2);
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
 }
 
 /* Diagram Panel */
@@ -401,8 +403,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .schematic-container {
-    background-color: rgb(0 0 0 / 0.15);
-    border-radius: 8px;
+    background-color: #09090b;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
     padding: 10px;
 }
@@ -447,7 +449,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .chart-card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 15px;
     box-shadow: var(--shadow-premium);
     height: 250px;
@@ -472,12 +474,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .btn-clear:hover {
-    background-color: #334155;
+    background-color: #27272a;
     color: var(--text-primary);
 }
 
 .console-box {
-    background-color: #0b0f19;
+    background-color: #09090b;
     padding: 15px;
     height: 180px;
     overflow-y: auto;
@@ -496,7 +498,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .log-line.system {
-    color: #38bdf8;
+    color: #60a5fa;
     border-color: var(--color-primary);
 }
 
@@ -516,7 +518,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .log-line.sub {
-    color: #a78bfa;
+    color: #c084fc;
     padding-left: 24px;
     border-color: transparent;
 }
@@ -528,7 +530,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     padding: 15px 0;
     text-align: center;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 /* Manual styling when selected */
@@ -536,5 +538,5 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border: 1px dashed var(--border-color);
     padding: 12px;
     border-radius: 6px;
-    background-color: rgb(255 255 255 / 0.01);
+    background-color: rgba(255, 255, 255, 0.01);
 }

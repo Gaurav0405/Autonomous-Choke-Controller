@@ -306,12 +306,12 @@ function initCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                title: { display: true, text: 'Oil Flow Rate (Q vs Target)', color: '#f8fafc', font: { weight: 'bold', size: 12 } },
-                legend: { labels: { color: '#94a3b8', font: { size: 10 } } }
+                title: { display: true, text: 'Oil Flow Rate (Q vs Target)', color: '#fafafa', font: { weight: 'bold', size: 12 } },
+                legend: { labels: { color: '#a1a1aa', font: { size: 10 } } }
             },
             scales: {
-                x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                y: { min: 40, max: 260, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                x: { grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } },
+                y: { min: 40, max: 260, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
             }
         }
     };
@@ -335,12 +335,12 @@ function initCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                title: { display: true, text: 'Choke Opening (%)', color: '#f8fafc', font: { weight: 'bold', size: 12 } },
+                title: { display: true, text: 'Choke Opening (%)', color: '#fafafa', font: { weight: 'bold', size: 12 } },
                 legend: { display: false }
             },
             scales: {
-                x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                y: { min: 20, max: 80, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                x: { grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } },
+                y: { min: 20, max: 80, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
             }
         }
     };
@@ -374,12 +374,12 @@ function initCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                title: { display: true, text: 'WHP & FLP (psi)', color: '#f8fafc', font: { weight: 'bold', size: 12 } },
-                legend: { labels: { color: '#94a3b8', font: { size: 10 } } }
+                title: { display: true, text: 'WHP & FLP (psi)', color: '#fafafa', font: { weight: 'bold', size: 12 } },
+                legend: { labels: { color: '#a1a1aa', font: { size: 10 } } }
             },
             scales: {
-                x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                y: { min: 100, max: 300, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                x: { grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } },
+                y: { min: 100, max: 300, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
             }
         }
     };
@@ -403,12 +403,12 @@ function initCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                title: { display: true, text: 'Bottom Hole Pressure (BHP, psi)', color: '#f8fafc', font: { weight: 'bold', size: 12 } },
+                title: { display: true, text: 'Bottom Hole Pressure (BHP, psi)', color: '#fafafa', font: { weight: 'bold', size: 12 } },
                 legend: { display: false }
             },
             scales: {
-                x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                y: { min: 2850, max: 3150, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                x: { grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } },
+                y: { min: 2850, max: 3150, grid: { color: '#27272a' }, ticks: { color: '#a1a1aa' } }
             }
         }
     };
