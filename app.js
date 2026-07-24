@@ -309,6 +309,12 @@ const alarmRampTile = document.getElementById("alarm-ramp-tile");
 const alarmStatusTile = document.getElementById("alarm-status-tile");
 const operatingStateLabel = document.getElementById("operating-state-label");
 
+// Alarm description subtext elements
+const alarmWhpDesc = document.getElementById("alarm-whp-desc");
+const alarmFlpDesc = document.getElementById("alarm-flp-desc");
+const alarmBhpDesc = document.getElementById("alarm-bhp-desc");
+const alarmRampDesc = document.getElementById("alarm-ramp-desc");
+
 // Simulation summary elements
 const sumScenario = document.getElementById("sum-scenario");
 const sumRate = document.getElementById("sum-rate");
@@ -525,9 +531,14 @@ function resetSimulation() {
     kpiFlow.textContent = simulator.Q.toFixed(1);
     kpiChoke.textContent = simulator.choke.toFixed(1);
     kpiProd.textContent = "0.0";
+    
     kpiError.textContent = "0.0";
+    kpiError.className = "kpi-val status-safe";
+    
     kpiViolations.textContent = "0";
-    kpiStatus.textContent = "SAFE";
+    kpiViolations.className = "kpi-val status-safe";
+    
+    kpiStatus.textContent = "NORMAL";
     kpiStatus.className = "kpi-val status-safe";
     
     // Reset alarm panels
@@ -537,6 +548,12 @@ function resetSimulation() {
     alarmRampTile.className = "alarm-tile";
     alarmStatusTile.className = "alarm-tile status-tile";
     operatingStateLabel.textContent = "NORMAL STATE";
+    
+    // Reset description texts
+    alarmWhpDesc.textContent = "Limit < 220 psi";
+    alarmFlpDesc.textContent = "Limit < 150 psi";
+    alarmBhpDesc.textContent = "Limit < 2900 psi";
+    alarmRampDesc.textContent = "> 5.0% change/hr";
     
     // Reset simulation summary card
     let modeText = modeSelect.value === "manual_override" ? "Manual Override" : getScenarioName();
@@ -714,51 +731,81 @@ function executeStep() {
     kpiFlow.textContent = newStates.Q.toFixed(1);
     kpiChoke.textContent = nextChoke.toFixed(1);
     kpiProd.textContent = cumulative_prod.toFixed(0);
-    kpiError.textContent = isManualOverride ? "-" : mae.toFixed(1);
-    kpiViolations.textContent = violations_count;
     
-    // Determine alarm tile classes using 3-state logic:
-    // Red (active): pressure violates limit.
-    // Orange (warning): limit is active in controller predictions.
-    // Dim (normal): limit is safe.
+    // Dynamic KPI Colors: MAE Tracking Error
+    kpiError.textContent = isManualOverride ? "-" : mae.toFixed(1);
+    if (isManualOverride) {
+        kpiError.className = "kpi-val";
+    } else if (mae < 2.0) {
+        kpiError.className = "kpi-val status-safe";
+    } else if (mae < 10.0) {
+        kpiError.className = "kpi-val status-warning";
+    } else {
+        kpiError.className = "kpi-val status-danger";
+    }
+    
+    // Dynamic KPI Colors: Safety Violations
+    kpiViolations.textContent = violations_count;
+    if (violations_count === 0) {
+        kpiViolations.className = "kpi-val status-safe";
+    } else {
+        kpiViolations.className = "kpi-val status-danger";
+    }
+    
+    // Determine alarm tile classes and subtexts using 3-state logic:
+    // Red (active): pressure violates limit -> Description: VIOLATION ACTIVE
+    // Orange (warning): limit is active in controller predictions -> Description: Constraint Active
+    // Dim (normal): limit is safe -> Description: Limit < baseline
     
     // WHP tile
     if (whpViol) {
         alarmWhpTile.className = "alarm-tile active"; // Red
+        alarmWhpDesc.textContent = "🔴 VIOLATION ACTIVE";
     } else if (diag.whp_viol_count > 0 && diag.status === "LIMIT ACTIVE") {
         alarmWhpTile.className = "alarm-tile warning"; // Orange
+        alarmWhpDesc.textContent = "🟠 Constraint Active";
     } else {
         alarmWhpTile.className = "alarm-tile"; // Dim
+        alarmWhpDesc.textContent = "Limit < 220 psi";
     }
     
     // FLP tile
     if (flpViol) {
         alarmFlpTile.className = "alarm-tile active"; // Red
+        alarmFlpDesc.textContent = "🔴 VIOLATION ACTIVE";
     } else if (diag.flp_viol_count > 0 && diag.status === "LIMIT ACTIVE") {
         alarmFlpTile.className = "alarm-tile warning"; // Orange
+        alarmFlpDesc.textContent = "🟠 Constraint Active";
     } else {
         alarmFlpTile.className = "alarm-tile"; // Dim
+        alarmFlpDesc.textContent = "Limit < 150 psi";
     }
     
     // BHP tile
     if (bhpViol) {
         alarmBhpTile.className = "alarm-tile active"; // Red
+        alarmBhpDesc.textContent = "🔴 VIOLATION ACTIVE";
     } else if (diag.bhp_viol_count > 0 && diag.status === "LIMIT ACTIVE") {
         alarmBhpTile.className = "alarm-tile warning"; // Orange
+        alarmBhpDesc.textContent = "🟠 Constraint Active";
     } else {
         alarmBhpTile.className = "alarm-tile"; // Dim
+        alarmBhpDesc.textContent = "Limit < 2900 psi";
     }
     
     // Ramp Rate tile
     if (rampViol) {
         alarmRampTile.className = "alarm-tile active"; // Red
+        alarmRampDesc.textContent = "🔴 LIMIT EXCEEDED";
     } else if (choke_diff > 4.90) {
         alarmRampTile.className = "alarm-tile warning"; // Orange
+        alarmRampDesc.textContent = "🟠 Rate Limit Reached";
     } else {
         alarmRampTile.className = "alarm-tile"; // Dim
+        alarmRampDesc.textContent = "Limit: +/- 5%/hr";
     }
     
-    // Update alarm status tile class
+    // Update alarm status tile class and dynamic Safety KPI color
     if (anyViol) {
         alarmStatusTile.className = "alarm-tile status-tile active";
         operatingStateLabel.textContent = "ALARM ACTIVE";
@@ -772,7 +819,7 @@ function executeStep() {
     } else {
         alarmStatusTile.className = "alarm-tile status-tile";
         operatingStateLabel.textContent = "NORMAL STATE";
-        kpiStatus.textContent = "NORMAL";
+        kpiStatus.textContent = "SAFE";
         kpiStatus.className = "kpi-val status-safe";
     }
     
@@ -781,17 +828,17 @@ function executeStep() {
     sumScenario.textContent = modeText;
     sumRate.textContent = `${newStates.Q.toFixed(1)} bbl/hr`;
     sumChoke.textContent = `${nextChoke.toFixed(1)}%`;
-    sumViolations.textContent = `${violations_count} hrs`;
-    sumRamp.textContent = `${max_ramp_rate.toFixed(1)}%`;
+    sumViolations.textContent = `${violations_count} hours`;
+    sumRamp.textContent = `${max_ramp_rate.toFixed(1)}% / hr`;
     
     if (anyViol) {
-        sumStatus.textContent = "VIOLATION";
+        sumStatus.textContent = "VIOLATION ACTIVE";
         sumStatus.className = "status-danger";
     } else if (diag.status === "LIMIT ACTIVE") {
-        sumStatus.textContent = "LIMIT ACTIVE";
+        sumStatus.textContent = "CONSTRAINT ACTIVE";
         sumStatus.className = "status-warning";
     } else {
-        sumStatus.textContent = "SAFE";
+        sumStatus.textContent = "SAFE OPERATING POINT";
         sumStatus.className = "status-safe";
     }
     

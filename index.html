@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Local Chart.js for Offline Support -->
+    <script src="chart.min.js"></script>
 </head>
 <body>
     <header class="app-header">
@@ -308,18 +308,18 @@
                                 <circle cx="50" cy="10" r="4.5" fill="#fb7185"/>
                             </g>
 
-                            <!-- Callouts & Dynamic Displays -->
-                            <g transform="translate(130, 20)">
-                                <rect x="-55" y="0" width="90" height="20" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1.5"/>
-                                <text x="-10" y="14" fill="#60a5fa" font-size="10" font-weight="bold" id="label-whp">WHP: -</text>
+                            <!-- Callouts & Dynamic Displays (Scaled up + enlarged 13px labels) -->
+                            <g transform="translate(125, 20)">
+                                <rect x="-60" y="0" width="120" height="24" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1.5"/>
+                                <text x="0" y="17" fill="#60a5fa" font-size="13" font-weight="bold" text-anchor="middle" id="label-whp">WHP: -</text>
                             </g>
                             <g transform="translate(355, 20)">
-                                <rect x="0" y="0" width="90" height="20" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1.5"/>
-                                <text x="45" y="14" fill="#60a5fa" font-size="10" font-weight="bold" text-anchor="middle" id="label-flp">FLP: -</text>
+                                <rect x="0" y="0" width="120" height="24" rx="4" fill="#09090b" stroke="#3b82f6" stroke-width="1.5"/>
+                                <text x="60" y="17" fill="#60a5fa" font-size="13" font-weight="bold" text-anchor="middle" id="label-flp">FLP: -</text>
                             </g>
                             <g transform="translate(230, 310)">
-                                <rect x="0" y="0" width="100" height="20" rx="4" fill="#09090b" stroke="#fb7185" stroke-width="1.5"/>
-                                <text x="50" y="14" fill="#fb7185" font-size="10" font-weight="bold" text-anchor="middle" id="label-bhp">BHP: -</text>
+                                <rect x="0" y="0" width="130" height="24" rx="4" fill="#09090b" stroke="#fb7185" stroke-width="1.5"/>
+                                <text x="65" y="17" fill="#fb7185" font-size="13" font-weight="bold" text-anchor="middle" id="label-bhp">BHP: -</text>
                             </g>
                         </svg>
                     </div>
@@ -336,29 +336,29 @@
                             <div class="alarm-tile" id="alarm-whp-tile">
                                 <span class="alarm-light"></span>
                                 <div class="alarm-text">
-                                    <span class="alarm-name">WHP LOW</span>
-                                    <span class="alarm-desc">Limit &lt; 220 psi</span>
+                                    <span class="alarm-name" id="alarm-whp-name">WHP LOW</span>
+                                    <span class="alarm-desc" id="alarm-whp-desc">Limit &lt; 220 psi</span>
                                 </div>
                             </div>
                             <div class="alarm-tile" id="alarm-flp-tile">
                                 <span class="alarm-light"></span>
                                 <div class="alarm-text">
-                                    <span class="alarm-name">FLP LOW</span>
-                                    <span class="alarm-desc">Limit &lt; 150 psi</span>
+                                    <span class="alarm-name" id="alarm-flp-name">FLP LOW</span>
+                                    <span class="alarm-desc" id="alarm-flp-desc">Limit &lt; 150 psi</span>
                                 </div>
                             </div>
                             <div class="alarm-tile" id="alarm-bhp-tile">
                                 <span class="alarm-light"></span>
                                 <div class="alarm-text">
-                                    <span class="alarm-name">BHP LOW</span>
-                                    <span class="alarm-desc">Limit &lt; 2900 psi</span>
+                                    <span class="alarm-name" id="alarm-bhp-name">BHP LOW</span>
+                                    <span class="alarm-desc" id="alarm-bhp-desc">Limit &lt; 2900 psi</span>
                                 </div>
                             </div>
                             <div class="alarm-tile" id="alarm-ramp-tile">
                                 <span class="alarm-light"></span>
                                 <div class="alarm-text">
-                                    <span class="alarm-name">RAMP LIMIT</span>
-                                    <span class="alarm-desc">&gt; 5.0% change/hr</span>
+                                    <span class="alarm-name" id="alarm-ramp-name">RAMP LIMIT</span>
+                                    <span class="alarm-desc" id="alarm-ramp-desc">&gt; 5.0% change/hr</span>
                                 </div>
                             </div>
                             <div class="alarm-tile status-tile" id="alarm-status-tile">
@@ -368,18 +368,36 @@
                         </div>
                     </div>
 
-                    <!-- Simulation Summary Card -->
+                    <!-- Simulation Summary Card (Stacked layout) -->
                     <div class="panel summary-panel">
                         <div class="panel-header">
                             <h2>📊 Simulation Summary</h2>
                         </div>
                         <div class="summary-content">
-                            <div class="summary-row"><span>Scenario/Mode:</span> <strong id="sum-scenario">-</strong></div>
-                            <div class="summary-row"><span>Oil Rate (settled):</span> <strong id="sum-rate">-</strong></div>
-                            <div class="summary-row"><span>Choke Position:</span> <strong id="sum-choke">-</strong></div>
-                            <div class="summary-row"><span>Violations:</span> <strong id="sum-violations">-</strong></div>
-                            <div class="summary-row"><span>Max Ramp Rate:</span> <strong id="sum-ramp">-</strong></div>
-                            <div class="summary-row"><span>Controller Status:</span> <strong id="sum-status" class="status-safe">-</strong></div>
+                            <div class="summary-row">
+                                <span>Scenario / Mode</span>
+                                <strong id="sum-scenario">-</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Oil Flow Rate (settled)</span>
+                                <strong id="sum-rate">-</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Final Choke Opening</span>
+                                <strong id="sum-choke">-</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Safety Violations</span>
+                                <strong id="sum-violations">-</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Max Choke Ramp Rate</span>
+                                <strong id="sum-ramp">-</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Controller Status</span>
+                                <strong id="sum-status" class="status-safe">-</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
