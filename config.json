@@ -1,0 +1,13 @@
+{
+    "scenario_a_target": 120.0,
+    "scenario_b_target_initial": 100.0,
+    "scenario_b_target_step": 150.0,
+    "scenario_c_target_initial": 100.0,
+    "scenario_c_target_step": 200.0,
+    "whp_min_limit": 220.0,
+    "flp_min_limit": 150.0,
+    "bhp_min_limit": 2900.0,
+    "prediction_horizon_hp": 30,
+    "choke_penalty_lambda": 0.5,
+    "process_noise": true
+}
